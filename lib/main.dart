@@ -15,21 +15,33 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          primary: Colors.green.shade700,
-          secondary: Colors.teal.shade700,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F1A14),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF3DD68C),
+          secondary: Color(0xFFFFC857),
+          surface: Color(0xFF1B2B20),
+          error: Color(0xFFFF6B6B),
         ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.green.shade700,
-          foregroundColor: Colors.white,
-          elevation: 2,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1B2B20),
+          foregroundColor: Color(0xFFF0FFF4),
+          elevation: 0,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF3DD68C),
+            foregroundColor: const Color(0xFF0F1A14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF0F1A14),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF2E4535))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF2E4535))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF3DD68C))),
+          labelStyle: const TextStyle(color: Color(0xFF8DB39A)),
         ),
       ),
       home: const HomeScreen(),

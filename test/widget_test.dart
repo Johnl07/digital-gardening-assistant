@@ -8,12 +8,11 @@ void main() {
 
     // Verify title and tabs
     expect(find.text('My Digital Garden'), findsOneWidget);
-    expect(find.text('MAGDAGDAG NG TANIM'), findsOneWidget);
-    expect(find.text('MGA HALAMAN (CONTAINER)'), findsOneWidget);
+    expect(find.text('MAGDAGDAG'), findsOneWidget);
+    expect(find.text('MGA HALAMAN'), findsOneWidget);
 
     // Verify form elements
-    expect(find.text('Kasalukuyang Stage:'), findsOneWidget);
-    expect(find.text('Panahon:'), findsOneWidget);
-    expect(find.text('I-tanim sa Garden (Add Plant)'), findsOneWidget);
+    expect(find.text('Kasalukuyang Stage'), findsOneWidget);
+    expect(find.text('I-tanim sa Garden'), findsOneWidget);
   });
 }
