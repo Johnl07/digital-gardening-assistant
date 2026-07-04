@@ -10,7 +10,7 @@ import '../services/storage_service.dart';
 // ─── iOS Design Tokens ────────────────────────────────────────────────────────
 class _iOS {
   // System Colors (Light mode, matching iOS exactly)
-  static const bg           = Color(0xFFF2F2F7);
+  static const bg = Colors.white;
   static const cardBg       = Color(0xFFFFFFFF);
   static const groupedBg    = Color(0xFFFFFFFF);
   static const separator    = Color(0xFFC6C6C8);
@@ -75,7 +75,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _addPlantToGarden() async {
-    if (!_formKey.currentState!.validate()) return;
 
     final input = PlantInput(
       vegetableType: _selectedVegetable,
@@ -104,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadHistoryLogs();
 
     if (mounted) {
-      _showIOSSnackbar(context, '${_cropName(_selectedVegetable)} idinagdag sa Garden!', _iOS.systemGreen);
+      _showIOSSnackbar(context, '${_cropName(_selectedVegetable)} added to Garden!', _iOS.systemGreen);
       setState(() => _tabIndex = 1);
     }
   }
@@ -118,15 +117,15 @@ class _HomeScreenState extends State<HomeScreen> {
     await showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Burahin Lahat?'),
-        content: const Text('Hindi na maaaring maibalik ang lahat ng iyong halaman.'),
+        title: const Text('Delete All?'),
+        content: const Text('This action cannot be undone.'),
         actions: [
-          CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx), child: const Text('Kanselahin')),
+          CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           CupertinoDialogAction(isDestructiveAction: true, onPressed: () async {
             Navigator.pop(ctx);
             await StorageService.clearLogs();
             await _loadHistoryLogs();
-          }, child: const Text('Burahin')),
+          }, child: const Text('Delete')),
         ],
       ),
     );
@@ -143,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  String _cropName(String v) => v.contains('Tomato') ? 'Kamatis' : v.contains('Eggplant') ? 'Talong' : 'Sili';
+  String _cropName(String v) => v.contains('Tomato') ? 'Tomato' : v.contains('Eggplant') ? 'Eggplant' : 'Chili';
   String _cropEmoji(String v) => v.contains('Tomato') ? '🍅' : v.contains('Eggplant') ? '🍆' : '🌶️';
 
   // ─── BUILD ───────────────────────────────────────────────────────────────────
@@ -172,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildTabItem(0, CupertinoIcons.plus_circle_fill, 'Magdagdag'),
+              _buildTabItem(0, CupertinoIcons.plus_circle_fill, 'Add'),
               _buildTabItem(1, CupertinoIcons.leaf_arrow_circlepath, 'Garden'),
             ],
           ),
@@ -213,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
           shadowColor: _iOS.separator,
           flexibleSpace: FlexibleSpaceBar(
             titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
-            title: const Text('Magdagdag', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
+            title: const Text('Add Plant', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
             expandedTitleScale: 1.9,
           ),
         ),
@@ -226,22 +225,22 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 28),
 
             // Crop picker
-            _buildGroupHeader('Pumili ng Halaman'),
+            _buildGroupHeader('Select Plant'),
             _buildCropPicker(),
             const SizedBox(height: 28),
 
             // Date
-            _buildGroupHeader('Petsa ng Pagtatanim'),
+            _buildGroupHeader('Planting Date'),
             _buildDateRow(),
             const SizedBox(height: 28),
 
             // Stage & Season
-            _buildGroupHeader('Stage at Panahon'),
+            _buildGroupHeader('Stage & Season'),
             _buildStageSeasonGroup(),
             const SizedBox(height: 28),
 
             // Environment
-            _buildGroupHeader('Mga Kondisyon'),
+            _buildGroupHeader('Conditions'),
             _buildEnvironmentGroup(),
             const SizedBox(height: 32),
 
@@ -269,9 +268,9 @@ class _HomeScreenState extends State<HomeScreen> {
         const Text('🌿', style: TextStyle(fontSize: 36)),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Kamusta, Ka-Garden!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
+          const Text('Welcome to Digital Garden!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
           const SizedBox(height: 3),
-          Text('${_historyLogs.length} halaman sa iyong garden. Idagdag ang bago at i-track ang paglaki nito.', style: const TextStyle(fontSize: 12.5, color: _iOS.labelSecondary, height: 1.4)),
+          Text('${_historyLogs.length} plants in your garden. Add a new one and track its growth.', style: const TextStyle(fontSize: 12.5, color: _iOS.labelSecondary, height: 1.4)),
         ])),
       ]),
     );
@@ -286,9 +285,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCropPicker() {
     final crops = [
-      ('Tomato', '🍅', 'Kamatis'),
-      ('Eggplant', '🍆', 'Talong'),
-      ('Siling Labuyo', '🌶️', 'Sili'),
+      ('Tomato', '🍅', 'Tomato'),
+      ('Eggplant', '🍆', 'Eggplant'),
+      ('Siling Labuyo', '🌶️', 'Chili'),
     ];
     return Container(
       decoration: _iOS.groupedCard,
@@ -330,8 +329,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _iOS.cardBg,
                 child: Column(children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    CupertinoButton(child: const Text('Kanselahin'), onPressed: () => Navigator.pop(ctx)),
-                    CupertinoButton(child: const Text('Tapos', style: TextStyle(fontWeight: FontWeight.w700)), onPressed: () => Navigator.pop(ctx, temp)),
+                    CupertinoButton(child: const Text('Cancel'), onPressed: () => Navigator.pop(ctx)),
+                    CupertinoButton(child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)), onPressed: () => Navigator.pop(ctx, temp)),
                   ]),
                   Expanded(child: CupertinoDatePicker(
                     mode: CupertinoDatePickerMode.date,
@@ -351,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(children: [
             const Icon(CupertinoIcons.calendar, size: 20, color: _iOS.systemRed),
             const SizedBox(width: 14),
-            const Expanded(child: Text('Petsa ng Pagtatanim', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
+            const Expanded(child: Text('Planting Date', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
             Text(
               '${_selectedDate.month}/${_selectedDate.day}/${_selectedDate.year}',
               style: const TextStyle(fontSize: 15, color: _iOS.labelSecondary),
@@ -372,17 +371,17 @@ class _HomeScreenState extends State<HomeScreen> {
         // Stage row
         InkWell(
           onTap: () => _showPicker(
-            context, 'Pumili ng Stage', GrowthStage.values,
+            context, 'Select Stage', GrowthStage.values,
             _selectedStage, (v) => setState(() => _selectedStage = v as GrowthStage),
-            (v) => '${(v as GrowthStage).nameTagalog} · ${(v).nameEnglish}',
+            (v) => '${(v as GrowthStage).nameEnglish}',
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
               const Icon(CupertinoIcons.tree, size: 20, color: _iOS.systemGreen),
               const SizedBox(width: 14),
-              const Expanded(child: Text('Kasalukuyang Stage', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
-              Text(_selectedStage.nameTagalog, style: const TextStyle(fontSize: 14, color: _iOS.labelSecondary)),
+              const Expanded(child: Text('Current Stage', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
+              Text(_selectedStage.nameEnglish, style: const TextStyle(fontSize: 14, color: _iOS.labelSecondary)),
               const SizedBox(width: 6),
               const Icon(CupertinoIcons.chevron_right, size: 14, color: _iOS.labelTertiary),
             ]),
@@ -393,17 +392,17 @@ class _HomeScreenState extends State<HomeScreen> {
         // Season row
         InkWell(
           onTap: () => _showPicker(
-            context, 'Pumili ng Panahon', Season.values,
+            context, 'Select Season', Season.values,
             _selectedSeason, (v) => setState(() => _selectedSeason = v as Season),
-            (v) => '${(v as Season).nameTagalog} · ${(v).nameEnglish}',
+            (v) => '${(v as Season).nameEnglish}',
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
               const Icon(CupertinoIcons.cloud_sun, size: 20, color: _iOS.systemAmber),
               const SizedBox(width: 14),
-              const Expanded(child: Text('Panahon (Season)', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
-              Text(_selectedSeason.nameTagalog, style: const TextStyle(fontSize: 14, color: _iOS.labelSecondary)),
+              const Expanded(child: Text('Season', style: TextStyle(fontSize: 16, color: _iOS.labelPrimary))),
+              Text(_selectedSeason.nameEnglish, style: const TextStyle(fontSize: 14, color: _iOS.labelSecondary)),
               const SizedBox(width: 6),
               const Icon(CupertinoIcons.chevron_right, size: 14, color: _iOS.labelTertiary),
             ]),
@@ -423,9 +422,9 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             color: _iOS.cardBg,
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              GestureDetector(onTap: () => Navigator.pop(ctx), child: const Text('Kanselahin', style: TextStyle(color: _iOS.systemGreen, fontSize: 16))),
+              GestureDetector(onTap: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: _iOS.systemGreen, fontSize: 16))),
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-              GestureDetector(onTap: () => Navigator.pop(ctx), child: const Text('Tapos', style: TextStyle(color: _iOS.systemGreen, fontWeight: FontWeight.w700, fontSize: 16))),
+              GestureDetector(onTap: () => Navigator.pop(ctx), child: const Text('Done', style: TextStyle(color: _iOS.systemGreen, fontWeight: FontWeight.w700, fontSize: 16))),
             ]),
           ),
           ...items.map((item) {
@@ -458,25 +457,25 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(children: [
         _buildEnvRow(
           icon: CupertinoIcons.sun_max_fill, iconColor: _iOS.systemAmber,
-          label: 'Sikat ng Araw',
+          label: 'Sunlight',
           values: SunlightLevel.values, selected: _selectedSunlight,
-          labelFor: (v) => (v as SunlightLevel).nameTagalog,
+          labelFor: (v) => (v as SunlightLevel).nameEnglish,
           onChanged: (v) => setState(() => _selectedSunlight = v as SunlightLevel),
           isLast: false,
         ),
         _buildEnvRow(
           icon: CupertinoIcons.drop_fill, iconColor: _iOS.systemBlue,
-          label: 'Dami ng Tubig',
+          label: 'Water Level',
           values: WaterLevel.values, selected: _selectedWater,
-          labelFor: (v) => (v as WaterLevel).nameTagalog,
+          labelFor: (v) => (v as WaterLevel).nameEnglish,
           onChanged: (v) => setState(() => _selectedWater = v as WaterLevel),
           isLast: false,
         ),
         _buildEnvRow(
           icon: CupertinoIcons.layers_fill, iconColor: const Color(0xFF8B572A),
-          label: 'Kalidad ng Lupa',
+          label: 'Soil Quality',
           values: SoilQuality.values, selected: _selectedSoil,
-          labelFor: (v) => (v as SoilQuality).nameTagalog,
+          labelFor: (v) => (v as SoilQuality).nameEnglish,
           onChanged: (v) => setState(() => _selectedSoil = v as SoilQuality),
           isLast: true,
         ),
@@ -541,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(CupertinoIcons.add_circled_solid, color: Colors.white, size: 20),
           SizedBox(width: 8),
-          Text('I-tanim sa Garden', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+          Text('Add to Garden', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
         ]),
       ),
     );
@@ -573,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
               CupertinoButton(
                 padding: const EdgeInsets.only(right: 16),
                 onPressed: _clearAllPlants,
-                child: const Text('Burahin Lahat', style: TextStyle(color: _iOS.systemRed, fontSize: 14)),
+                child: const Text('Clear All', style: TextStyle(color: _iOS.systemRed, fontSize: 14)),
               ),
           ],
         ),
@@ -602,15 +601,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text('🪴', style: TextStyle(fontSize: 64)),
       const SizedBox(height: 16),
-      const Text('Walang Halaman Pa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
+      const Text('No Plants Yet', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: _iOS.labelPrimary)),
       const SizedBox(height: 6),
-      const Text('I-tap ang Magdagdag upang magsimula.', style: TextStyle(color: _iOS.labelSecondary, fontSize: 14)),
+      const Text('Tap Add to get started.', style: TextStyle(color: _iOS.labelSecondary, fontSize: 14)),
       const SizedBox(height: 24),
       CupertinoButton(
         color: _iOS.systemGreen,
         borderRadius: BorderRadius.circular(12),
         onPressed: () => setState(() => _tabIndex = 0),
-        child: const Text('Magdagdag ng Halaman'),
+        child: const Text('Add Plant'),
       ),
     ]));
   }
@@ -658,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ]),
             const SizedBox(height: 4),
             Text(
-              daysLeft > 0 ? '🌾  $daysLeft araw pa bago mag-harvest' : '🎉  Handa na para anihin!',
+              daysLeft > 0 ? '🌾  $daysLeft days until harvest' : '🎉  Ready for harvest!',
               style: TextStyle(fontSize: 12.5, color: daysLeft <= 14 ? _iOS.systemAmber : _iOS.labelSecondary),
             ),
             const SizedBox(height: 8),
@@ -671,7 +670,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            Text('${plant.careLogs.length} aktibidad na na-log', style: const TextStyle(fontSize: 11, color: _iOS.labelTertiary)),
+            Text('${plant.careLogs.length} activities logged', style: const TextStyle(fontSize: 11, color: _iOS.labelTertiary)),
           ])),
 
           // Chevron
@@ -682,11 +681,11 @@ class _HomeScreenState extends State<HomeScreen> {
             GestureDetector(
               onTap: () async {
                 await showCupertinoDialog(context: context, builder: (ctx) => CupertinoAlertDialog(
-                  title: const Text('Burahin?'),
-                  content: const Text('Sigurado ka bang nais mong alisin ang halamang ito?'),
+                  title: const Text('Delete?'),
+                  content: const Text('Are you sure you want to delete this plant?'),
                   actions: [
-                    CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx), child: const Text('Hindi')),
-                    CupertinoDialogAction(isDestructiveAction: true, onPressed: () async { Navigator.pop(ctx); await _deletePlant(plant.id); }, child: const Text('Burahin')),
+                    CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx), child: const Text('No')),
+                    CupertinoDialogAction(isDestructiveAction: true, onPressed: () async { Navigator.pop(ctx); await _deletePlant(plant.id); }, child: const Text('Delete')),
                   ],
                 ));
               },
@@ -714,11 +713,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   late int _currentDay;
 
   final List<(IconData, String)> _quickActions = [
-    (CupertinoIcons.drop_fill, 'Nagdilig (Watered)'),
-    (CupertinoIcons.leaf_arrow_circlepath, 'Naglagay ng Pataba (Fertilized)'),
-    (CupertinoIcons.scissors, 'Binawasan ng Damo (Weeded)'),
-    (CupertinoIcons.cloud_rain, 'Pinrotektahan sa Ulan'),
-    (CupertinoIcons.arrow_swap, 'Inilipat ng Pwesto'),
+    (CupertinoIcons.drop_fill, 'Watered'),
+    (CupertinoIcons.leaf_arrow_circlepath, 'Fertilized'),
+    (CupertinoIcons.scissors, 'Weeded'),
+    (CupertinoIcons.cloud_rain, 'Protected from Rain'),
+    (CupertinoIcons.arrow_swap, 'Moved Location'),
   ];
 
   @override
@@ -736,11 +735,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       final confirm = await showCupertinoDialog<bool>(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
-          title: const Text('Idagdag Muli?'),
-          content: Text('May aktibidad na sa Araw $_currentDay. Idagdag pa rin?'),
+          title: const Text('Add Again?'),
+          content: Text('An activity already exists for Day $_currentDay. Add anyway?'),
           actions: [
-            CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx, false), child: const Text('Kanselahin')),
-            CupertinoDialogAction(onPressed: () => Navigator.pop(ctx, true), child: const Text('Idagdag')),
+            CupertinoDialogAction(isDefaultAction: true, onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            CupertinoDialogAction(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
           ],
         ),
       );
