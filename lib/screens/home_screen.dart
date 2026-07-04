@@ -968,6 +968,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   Future<void> _showAddActionDialog() async {
     String selectedAction = _actions[0];
     final quantityController = TextEditingController();
+    final dayPred = _prediction.timeline[_currentDay];
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -1005,12 +1006,52 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: quantityController,
+                onChanged: (text) {
+                  setDialogState(() {});
+                },
                 decoration: InputDecoration(
                   hintText: 'e.g. 500 mL, 15g, etc.',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _Theme.border)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _Theme.border)),
                 ),
+              ),
+              Builder(
+                builder: (context) {
+                  final text = quantityController.text.trim();
+                  if (selectedAction == 'Watered' && text.isNotEmpty) {
+                    final ml = RecommendationEngine.parseWaterQuantity(text);
+                    if (ml != null) {
+                      final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
+                      if (ml > maxRec * 3) {
+                        return const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            '⚠️ Severe Overwatering warning! High risk of root rot.',
+                            style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        );
+                      } else if (ml > maxRec) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '⚠️ Overwatering limit is $maxRec mL for this stage.',
+                            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        );
+                      } else if (ml < minRec) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '⚠️ Underwatering. Recommended minimum is $minRec mL.',
+                            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                  return const SizedBox.shrink();
+                }
               ),
             ],
           ),
@@ -1064,6 +1105,15 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final daysLeft = _prediction.totalDaysToHarvest - _currentDay;
     final progress = _currentDay / _prediction.totalDaysToHarvest;
     final filteredLogs = _plant.careLogs.where((l) => l.dayOffset == _currentDay).toList();
+
+    // Calculate dynamic health based on care logs
+    final dailyValidation = RecommendationEngine.validateDailyActions(
+      crop: _plant.input.vegetableType,
+      stage: dayPred.stage,
+      actions: filteredLogs,
+    );
+    final double rawHealth = dayPred.healthScore;
+    final double adjustedHealth = (rawHealth + (dailyValidation.healthScoreModifier / 100)).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: _Theme.bg,
@@ -1146,8 +1196,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             Expanded(child: _infoTile(_stageEmoji(dayPred.stage), dayPred.stage.nameEnglish, 'Stage')),
             const SizedBox(width: 10),
             Expanded(child: _infoTile(
-              dayPred.healthScore >= 0.7 ? '💚' : dayPred.healthScore >= 0.4 ? '💛' : '❤️',
-              '${(dayPred.healthScore * 100).round()}%', 'Health',
+              adjustedHealth >= 0.7 ? '💚' : adjustedHealth >= 0.4 ? '💛' : '❤️',
+              '${(adjustedHealth * 100).round()}%', 'Health',
             )),
           ]),
           const SizedBox(height: 12),
@@ -1175,15 +1225,27 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             padding: const EdgeInsets.all(18),
             decoration: _Theme.card,
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.lightbulb_outline_rounded, color: Colors.amber, size: 24),
+              Icon(
+                dailyValidation.warnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.lightbulb_outline_rounded,
+                color: dailyValidation.warnings.isNotEmpty ? Colors.orange[900] : Colors.amber,
+                size: 24,
+              ),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('RECOMMENDATIONS', style: TextStyle(fontSize: 11, letterSpacing: 1.0, fontWeight: FontWeight.w800, color: _Theme.textSecondary)),
+                Text(
+                  dailyValidation.warnings.isNotEmpty ? 'AGRICULTURAL WARNINGS' : 'RECOMMENDATIONS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 1.0,
+                    fontWeight: FontWeight.w800,
+                    color: dailyValidation.warnings.isNotEmpty ? Colors.orange[800] : _Theme.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  _plant.recommendations.isNotEmpty 
-                    ? _plant.recommendations.join('\n') 
-                    : dayPred.dailyTip, 
+                  dailyValidation.warnings.isNotEmpty
+                    ? dailyValidation.warnings.join('\n\n')
+                    : (_plant.recommendations.isNotEmpty ? _plant.recommendations.join('\n') : dayPred.dailyTip),
                   style: const TextStyle(fontSize: 13.5, color: _Theme.textPrimary, height: 1.5, fontWeight: FontWeight.w500),
                 ),
               ])),

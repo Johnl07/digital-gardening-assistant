@@ -1,4 +1,5 @@
 import '../models/plant_input.dart';
+import '../models/prediction_log.dart';
 
 class RecommendationEngine {
   /// Evaluates plant environmental factors and returns health status and recommendations.
@@ -141,6 +142,100 @@ class RecommendationEngine {
     );
   }
 
+  /// Parses text quantities (e.g., "10000ml", "1.5L", "500") into numerical milliliters.
+  static int? parseWaterQuantity(String text) {
+    if (text.isEmpty) return null;
+    final cleaned = text.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final numberMatch = RegExp(r'^\d+(\.\d+)?').firstMatch(cleaned);
+    if (numberMatch == null) return null;
+    
+    final double value = double.tryParse(numberMatch.group(0)!) ?? 0;
+    
+    if (cleaned.contains('liters') || cleaned.contains('liter') || (cleaned.contains('l') && !cleaned.contains('ml'))) {
+      return (value * 1000).round();
+    }
+    return value.round(); // Default is mL
+  }
+
+  /// Returns (minRecommended, maxRecommended) watering limit per crop and growth stage.
+  static (int, int) getWateringRange(String crop, GrowthStage stage) {
+    final c = crop.toLowerCase();
+    final bool isTomato = c.contains('tomato') || c.contains('kamatis');
+    final bool isEggplant = c.contains('eggplant') || c.contains('talong');
+    
+    if (isTomato) {
+      switch (stage) {
+        case GrowthStage.seedling: return (100, 250);
+        case GrowthStage.youngPlant: return (250, 450);
+        case GrowthStage.flowering:
+        case GrowthStage.fruiting: return (450, 800);
+      }
+    } else if (isEggplant) {
+      switch (stage) {
+        case GrowthStage.seedling: return (150, 300);
+        case GrowthStage.youngPlant: return (300, 650);
+        case GrowthStage.flowering:
+        case GrowthStage.fruiting: return (650, 1200);
+      }
+    } else { // Chili / Siling Labuyo
+      switch (stage) {
+        case GrowthStage.seedling: return (80, 180);
+        case GrowthStage.youngPlant: return (180, 350);
+        case GrowthStage.flowering:
+        case GrowthStage.fruiting: return (350, 650);
+      }
+    }
+  }
+
+  /// Evaluates current day's care logs and returns safety flags/warnings and health score offsets.
+  static DailyValidationResult validateDailyActions({
+    required String crop,
+    required GrowthStage stage,
+    required List<DailyAction> actions,
+  }) {
+    int healthScoreModifier = 0;
+    List<String> warnings = [];
+
+    // Evaluate Water logs
+    final wateringActions = actions.where((a) => a.action == 'Watered').toList();
+    if (wateringActions.isNotEmpty) {
+      int totalWaterMl = 0;
+      for (var action in wateringActions) {
+        final ml = parseWaterQuantity(action.quantity);
+        if (ml != null) {
+          totalWaterMl += ml;
+        }
+      }
+
+      if (totalWaterMl > 0) {
+        final (minRec, maxRec) = getWateringRange(crop, stage);
+        
+        if (totalWaterMl > maxRec * 3) { // Severe overwatering
+          warnings.add("Severe Overwatering: $totalWaterMl mL is extremely high! Excessive water floods the soil, choking roots of oxygen and leading to root rot.");
+          healthScoreModifier -= 40;
+        } else if (totalWaterMl > maxRec) { // Mild overwatering
+          warnings.add("Overwatering Alert: $totalWaterMl mL is higher than the recommended maximum ($maxRec mL). Keep soil damp but not soggy.");
+          healthScoreModifier -= 15;
+        } else if (totalWaterMl < minRec) { // Underwatering
+          warnings.add("Underwatering Alert: $totalWaterMl mL is below the recommended minimum ($minRec mL). Increase watering to prevent wilting.");
+          healthScoreModifier -= 15;
+        }
+      }
+    }
+
+    // Evaluate Fertilization logs
+    final fertilizingActions = actions.where((a) => a.action == 'Fertilized').toList();
+    if (fertilizingActions.length > 1) { // Too frequent in a single day
+      warnings.add("Excessive Fertilization: Fertilizing multiple times in a single day causes chemical burn to roots (nutrient burn). Limit to once every 2 weeks.");
+      healthScoreModifier -= 25;
+    }
+
+    return DailyValidationResult(
+      healthScoreModifier: healthScoreModifier,
+      warnings: warnings,
+    );
+  }
+
   /// Generates a specific tip for a single day of the simulation based on the grid state and environment.
   static String getDaySuggestion({
     required int day,
@@ -153,7 +248,6 @@ class RecommendationEngine {
     final bool isChili = crop.contains('siling') || crop.contains('chili') || crop.contains('pepper');
 
     // Count states
-    int empty = 0;
     int seedling = 0;
     int young = 0;
     int flowering = 0;
@@ -162,7 +256,6 @@ class RecommendationEngine {
     for (int r = 0; r < grid.length; r++) {
       for (int c = 0; c < grid[r].length; c++) {
         switch (grid[r][c]) {
-          case 0: empty++; break;
           case 1: seedling++; break;
           case 2: young++; break;
           case 3: flowering++; break;
@@ -238,5 +331,15 @@ class RecommendationResult {
     required this.healthStatus,
     required this.flaggedDeficiencies,
     required this.recommendations,
+  });
+}
+
+class DailyValidationResult {
+  final int healthScoreModifier;
+  final List<String> warnings;
+
+  DailyValidationResult({
+    required this.healthScoreModifier,
+    required this.warnings,
   });
 }
