@@ -13,91 +13,91 @@ class RecommendationEngine {
 
     // 1. Evaluate Sunlight
     if (input.sunlight == SunlightLevel.low) {
-      flaggedDeficiencies.add("Kakulangan sa Sikat ng Araw (Low Sunlight)");
+      flaggedDeficiencies.add("Low Sunlight");
       if (isTomato) {
         recommendations.add(
-          "Ang kamatis ay nangangailangan ng hindi bababa sa 6-8 oras ng direktang sikat ng araw. Ilipat ito sa mas maaraw na lugar upang maiwasan ang pagkabansot.",
+          "Tomatoes need at least 6-8 hours of direct sunlight. Move to a sunnier spot to prevent stunted growth.",
         );
       } else if (isEggplant) {
         recommendations.add(
-          "Ang talong ay nangangailangan ng sapat na init at araw. Ilagay ito sa pwestong nasisikatan ng araw upang mapabilis ang pamumulaklak.",
+          "Eggplants need sufficient heat and sunlight. Place it in a sunny spot to speed up flowering.",
         );
       } else if (isChili) {
         recommendations.add(
-          "Ang siling labuyo ay mas nagiging maanghang at marami ang bunga kapag nakakakuha ng buong sikat ng araw. Ilagay ito sa open space.",
+          "Chili peppers become spicier and produce more fruit with full sunlight. Place it in an open area.",
         );
       } else {
         recommendations.add(
-          "Kailangan ng halaman ng sapat na sikat ng araw. Ilipat ito sa lugar na may direktang sikat ng araw araw-araw.",
+          "The plant needs sufficient sunlight. Move it to a spot with direct daily sunlight.",
         );
       }
     } else if (input.sunlight == SunlightLevel.medium) {
       if (isTomato) {
         recommendations.add(
-          "Katamtamang sikat ng araw. Mas mainam kung madaragdagan pa ang exposure ng kamatis para sa mas matamis at mapulang bunga.",
+          "Medium sunlight. It's better to increase exposure for sweeter and redder tomatoes.",
         );
       }
     }
 
     // 2. Evaluate Water
     if (input.water == WaterLevel.low) {
-      flaggedDeficiencies.add("Kakulangan sa Tubig (Low Water)");
+      flaggedDeficiencies.add("Low Water");
       if (isTomato) {
         recommendations.add(
-          "Diligan ang kamatis araw-araw, lalo na tuwing umaga. Ang kakulangan sa tubig ay nagdudulot ng 'blossom end rot' o pagkasira ng ilalim ng bunga.",
+          "Water tomatoes daily, especially in the morning. Lack of water causes blossom end rot.",
         );
       } else if (isEggplant) {
         recommendations.add(
-          "Dagdagan ang pagdidilig sa talong. Kapag kulang sa tubig ang talong, mabilis malaglag ang mga bulaklak nito.",
+          "Increase watering for eggplants. Eggplant flowers fall off easily when underwatered.",
         );
       } else if (isChili) {
         recommendations.add(
-          "Bagamat matibay sa tuyong lupa ang sili, diligan ito kapag tuyo na ang ibabaw ng lupa upang hindi malanta ang mga dahon.",
+          "Although chili is drought-tolerant, water it when the soil surface is dry to prevent leaves from wilting.",
         );
       } else {
         recommendations.add(
-          "Dagdagan ang pagdidilig. Siguraduhing sapat ang basang lupa para sa paglaki ng halaman.",
+          "Increase watering. Ensure the soil is damp enough for plant growth.",
         );
       }
     } else if (input.water == WaterLevel.high) {
-      flaggedDeficiencies.add("Sobrang Tubig (Excessive Water)");
+      flaggedDeficiencies.add("Excessive Water");
       if (isTomato) {
         recommendations.add(
-          "Bawasan ang pagdidilig ng kamatis. Ang sobrang basang lupa ay sanhi ng pagkabulok ng ugat (root rot) at pagkabitak ng bunga.",
+          "Reduce watering for tomatoes. Overwatered soil causes root rot and split fruit.",
         );
       } else if (isEggplant) {
         recommendations.add(
-          "Iwasan ang pagbaha sa lupa ng talong. Siguraduhing maayos ang drainage o daluyan ng tubig ng paso o plot.",
+          "Avoid waterlogging the eggplant soil. Ensure proper drainage in the pot or plot.",
         );
       } else if (isChili) {
         recommendations.add(
-          "Sensitibo ang siling labuyo sa labis na tubig. Ang basang-basang lupa ay nagiging sanhi ng pagkalagas ng dahon at fungal wilt.",
+          "Chili peppers are sensitive to excessive water. Waterlogged soil causes leaf drop and fungal wilt.",
         );
       } else {
         recommendations.add(
-          "Bawasan ang pagdidilig. Ang labis na tubig ay maaaring makasama sa ugat ng halaman.",
+          "Reduce watering. Excess water can harm the plant's roots.",
         );
       }
     }
 
     // 3. Evaluate Soil Quality
     if (input.soil == SoilQuality.poor) {
-      flaggedDeficiencies.add("Mahinang Kalidad ng Lupa (Poor Soil Quality)");
+      flaggedDeficiencies.add("Poor Soil Quality");
       if (isTomato) {
         recommendations.add(
-          "Maglagay ng organic compost o vermicast. Kailangan ng kamatis ng lupang mayaman sa Calcium at Phosphorus para sa magandang prutas.",
+          "Apply organic compost or vermicast. Tomatoes need soil rich in Calcium and Phosphorus for quality fruit.",
         );
       } else if (isEggplant) {
         recommendations.add(
-          "Haluan ng pataba (compost o dumi ng manok) ang lupa ng talong upang madagdagan ang Nitrogen na kailangan para sa malalaking dahon.",
+          "Mix organic compost or poultry manure into eggplant soil to boost Nitrogen for leafy growth.",
         );
       } else if (isChili) {
         recommendations.add(
-          "Maglagay ng tuyong dahon, compost, o organic fertilizer sa sili para mapayaman ang lupa at lumago ang mga sanga nito.",
+          "Apply mulch, compost, or organic fertilizer to chili plants to enrich the soil and encourage branching.",
         );
       } else {
         recommendations.add(
-          "Maglagay ng organic compost o pataba upang madagdagan ang mga sustansya sa lupa.",
+          "Apply organic compost or fertilizer to enrich soil nutrients.",
         );
       }
     }
@@ -106,21 +106,21 @@ class RecommendationEngine {
     if (input.season == Season.wet) {
       if (isTomato && input.water == WaterLevel.high) {
         recommendations.add(
-          "Babala sa Tag-ulan: Ang kamatis ay madaling kapitan ng fungal disease kapag palaging basa. Tiyaking hindi nabababad sa tubig ang ugat.",
+          "Rainy Season Alert: Tomatoes are susceptible to fungal diseases when constantly wet. Ensure roots are not waterlogged.",
         );
       } else if (isChili) {
         recommendations.add(
-          "Babala sa Tag-ulan: Protektahan ang siling labuyo mula sa malalakas na ulan na maaaring makalaglag sa mga bulaklak at prutas nito.",
+          "Rainy Season Alert: Protect chili peppers from heavy rains that can knock off flowers and fruit.",
         );
       }
     } else if (input.season == Season.dry) {
       if (isTomato && input.water == WaterLevel.medium) {
         recommendations.add(
-          "Payo sa Tag-init: Gumamit ng 'mulch' (tulad ng dayami) sa ibabaw ng lupa upang mapanatiling malamig at basa ang lupa ng kamatis.",
+          "Dry Season Tip: Use mulch (like straw) to keep tomato soil cool and retain moisture.",
         );
       } else if (isEggplant && input.water == WaterLevel.low) {
         recommendations.add(
-          "Payo sa Tag-init: Ang talong ay madaling matuyo sa tag-init. Siguraduhing madiligan ito ng dalawang beses sa isang araw (umaga at hapon).",
+          "Dry Season Tip: Eggplants dry out easily in summer. Water them twice a day (morning and afternoon).",
         );
       }
     }
@@ -128,7 +128,7 @@ class RecommendationEngine {
     // If no recommendations generated (ideal setup), provide positive reinforcement
     if (recommendations.isEmpty) {
       recommendations.add(
-        "Napakaganda ng kondisyon! Ipagpatuloy ang kasalukuyang pamamaraan ng pag-aalaga ng iyong halaman.",
+        "Excellent conditions! Continue with your current care routine.",
       );
     }
 
@@ -172,59 +172,59 @@ class RecommendationEngine {
     }
 
     if (day == 0) {
-      return "Araw 0 (Simula): Tiyaking mamasa-masa ang lupa. Ang unang araw ng pagmomonitor ay kritikal para sa pag-angkop ng halaman.";
+      return "Day 0 (Start): Ensure the soil is damp. The first day of monitoring is critical for plant adaptation.";
     }
 
     // Check waterlogging risk
     if (input.water == WaterLevel.high && input.season == Season.wet) {
-      return "Araw $day: Babala! Masyadong basa ang lupa dahil sa tag-ulan. Bawasan ang pagdidilig upang maiwasan ang amag at pagkabulok ng ugat.";
+      return "Day $day: Warning! Soil is too wet due to the rainy season. Reduce watering to prevent mold and root rot.";
     }
 
     // Check severe drought
     if (input.water == WaterLevel.low && input.season == Season.dry) {
-      return "Araw $day: Babala sa Tag-init! Mabilis natutuyo ang lupa. Mainam na magdilig sa umaga at hapon upang hindi malanta ang mga dahon.";
+      return "Day $day: Dry Season Warning! Soil dries out quickly. It's best to water in the morning and afternoon to prevent leaves from wilting.";
     }
 
     // High presence of flowers
     if (flowering > fruiting && flowering >= 2) {
       if (isTomato) {
-        return "Araw $day: Namumulaklak na ang kamatis. Bawasan ang Nitrogen fertilizer at maglagay ng pataba na may Potassium para lumaki ang mga bunga.";
+        return "Day $day: Tomato is flowering. Reduce Nitrogen fertilizer and apply Potassium-rich fertilizer for fruit development.";
       }
       if (isEggplant) {
-        return "Araw $day: Namumulaklak na ang talong. Siguraduhing may sapat na sikat ng araw upang hindi maglaglagan ang mga bulaklak.";
+        return "Day $day: Eggplant is flowering. Ensure adequate sunlight to prevent flowers from dropping.";
       }
-      return "Araw $day: Nagsisimula nang mamulaklak ang halaman. Tiyaking hindi nayayanig o nababasa ng malakas ang mga bulaklak.";
+      return "Day $day: The plant is starting to flower. Avoid disturbing or heavily wetting the flowers.";
     }
 
     // High presence of fruits
     if (fruiting >= 2) {
       if (isTomato) {
-        return "Araw $day: May namumuong bunga ng kamatis! Suportahan ang halaman ng stakes (tukod) upang hindi mabali ang mga sanga.";
+        return "Day $day: Tomato fruits are forming! Support the plant with stakes to prevent branches from breaking.";
       }
       if (isEggplant) {
-        return "Araw $day: May bunga na ang iyong talong. Diligan ito ng sapat upang maging makinis at malusog ang balat ng talong.";
+        return "Day $day: Eggplant is fruiting. Water adequately to keep the skin smooth and healthy.";
       }
-      return "Araw $day: May mga bunga na! Handang-handa na ang mga pananim para sa darating na pag-aani.";
+      return "Day $day: Fruits have formed! The crops are ready for the upcoming harvest.";
     }
 
     // Seedling stage dominant
     if (seedling > young && seedling >= 2) {
-      return "Araw $day: Nasa yugto ng seedling (punla) ang halaman. Magdilig gamit ang banayad na spray (mist) upang hindi maalis ang mga ugat sa lupa.";
+      return "Day $day: Plant is in the seedling stage. Water with a gentle mist to avoid displacing the roots.";
     }
 
     // Young plant stage dominant
     if (young > flowering && young >= 2) {
-      return "Araw $day: Mabilis ang paglaki ng mga dahon at sanga. Maglagay ng kaunting compost upang masuportahan ang nutrisyon nito.";
+      return "Day $day: Rapid foliage and branch growth. Apply a little compost to support its nutrition.";
     }
 
     // Standard / Default day tips
     switch (day % 3) {
       case 0:
-        return "Araw $day: Regular na suriin ang ilalim ng mga dahon para sa mga peste tulad ng aphids o uod.";
+        return "Day $day: Regularly inspect under the leaves for pests like aphids or caterpillars.";
       case 1:
-        return "Araw $day: Panatilihin ang kalinisan sa paligid ng halaman. Alisin ang mga ligaw na damo (weeds) na umaagaw sa sustansya.";
+        return "Day $day: Keep the surroundings clean. Remove weeds that compete for nutrients.";
       default:
-        return "Araw $day: Siguraduhing nakakatanggap ang halaman ng hindi bababa sa 6 na oras ng sikat ng araw sa pwesto nito.";
+        return "Day $day: Ensure the plant receives at least 6 hours of sunlight in its current position.";
     }
   }
 }
