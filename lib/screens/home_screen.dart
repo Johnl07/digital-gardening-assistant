@@ -967,8 +967,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   // Modern action dialog allowing quantity inputs
   Future<void> _showAddActionDialog() async {
     String selectedAction = _actions[0];
-    final quantityController = TextEditingController();
     final dayPred = _prediction.timeline[_currentDay];
+    final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
+    final averageWater = (minRec + maxRec) ~/ 2;
+
+    final quantityController = TextEditingController(text: '${averageWater} mL');
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -995,12 +998,26 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     items: _actions.map((act) => DropdownMenuItem(value: act, child: Text(act))).toList(),
                     onChanged: (val) {
                       if (val != null) {
-                        setDialogState(() => selectedAction = val);
+                        setDialogState(() {
+                          selectedAction = val;
+                          if (selectedAction == 'Watered') {
+                            quantityController.text = '${averageWater} mL';
+                          } else {
+                            quantityController.text = '';
+                          }
+                        });
                       }
                     },
                   ),
                 ),
               ),
+              if (selectedAction == 'Watered') ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Recommended daily: $minRec - $maxRec mL for this stage.',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.primary),
+                ),
+              ],
               const SizedBox(height: 18),
               const Text('Quantity / Description (e.g. 500 mL, 15g):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.textSecondary)),
               const SizedBox(height: 8),
@@ -1022,7 +1039,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   if (selectedAction == 'Watered' && text.isNotEmpty) {
                     final ml = RecommendationEngine.parseWaterQuantity(text);
                     if (ml != null) {
-                      final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
                       if (ml > maxRec * 3) {
                         return const Padding(
                           padding: EdgeInsets.only(top: 8),
