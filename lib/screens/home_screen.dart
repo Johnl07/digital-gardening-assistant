@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/plant_input.dart';
 import '../models/prediction_log.dart';
 import '../services/cellular_automata_engine.dart';
@@ -35,6 +36,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _hasStarted = false; // Tracks Onboarding/Intro state
+  int _onboardingStep = 1;  // Onboarding step (1: intro, 2: name)
+  String _userName = '';
+  final _nameController = TextEditingController();
   int _tabIndex = 0;       // Bottom navigation index (0: Home, 1: Add Plant, 2: View Plants)
 
   // Form states
@@ -53,11 +57,56 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadHistoryLogs();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userName = prefs.getString('user_name') ?? '';
+      _hasStarted = prefs.getBool('has_started') ?? false;
+      if (_userName.isNotEmpty) {
+        _nameController.text = _userName;
+      }
+    });
+  }
+
+  Future<void> _saveUserInfo(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+    await prefs.setBool('has_started', true);
+    setState(() {
+      _userName = name;
+      _hasStarted = true;
+    });
   }
 
   Future<void> _loadHistoryLogs() async {
     final logs = await StorageService.loadLogs();
     setState(() => _historyLogs = logs);
+  }
+
+  (double, bool, List<String>) _getDynamicHealth(PredictionLog plant) {
+    final pred = CellularAutomataEngine.predictGrowth(plant.input);
+    final elapsed = DateTime.now().difference(plant.input.plantingDate).inDays;
+    final currentDay = (elapsed + 1).clamp(1, pred.totalDaysToHarvest + 1);
+    final dayPred = pred.timeline[(currentDay - 1).clamp(0, pred.totalDaysToHarvest)];
+    final filteredLogs = plant.careLogs.where((l) => l.dayOffset == currentDay).toList();
+
+    final dailyValidation = RecommendationEngine.validateDailyActions(
+      crop: plant.input.vegetableType,
+      stage: dayPred.stage,
+      actions: filteredLogs,
+    );
+
+    final double rawHealth = dayPred.healthScore;
+    final double adjustedHealth = (rawHealth + (dailyValidation.healthScoreModifier / 100)).clamp(0.0, 1.0);
+
+    final isHealthyStatus = plant.healthStatus == 'Healthy' && 
+                            dailyValidation.warnings.isEmpty && 
+                            adjustedHealth >= 0.4;
+
+    return (adjustedHealth, isHealthyStatus, dailyValidation.warnings);
   }
 
   Future<void> _addPlantToGarden() async {
@@ -160,58 +209,117 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── 1. ONBOARDING / INTRO SCREEN ──────────────────────────────────────────
 
   Widget _buildOnboardingScreen() {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: _Theme.primary.withOpacity(0.08),
-                    shape: BoxShape.circle,
+    if (_onboardingStep == 1) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: _Theme.primary.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text('🌿', style: TextStyle(fontSize: 72)),
                   ),
-                  child: const Text('🌿', style: TextStyle(fontSize: 72)),
                 ),
-              ),
-              const SizedBox(height: 40),
-              const Text(
-                'Digital Gardening\nAssistant',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: _Theme.primaryDark,
-                  height: 1.2,
-                  letterSpacing: -1.0,
+                const SizedBox(height: 40),
+                const Text(
+                  'Digital Gardening\nAssistant',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: _Theme.primaryDark,
+                    height: 1.2,
+                    letterSpacing: -1.0,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'A virtual plant doctor and smart calendar tracker powered by Cellular Automata models.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: _Theme.textSecondary,
-                  height: 1.5,
+                const SizedBox(height: 16),
+                const Text(
+                  'A virtual plant doctor and smart calendar tracker powered by Cellular Automata models.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: _Theme.textSecondary,
+                    height: 1.5,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () => setState(() => _hasStarted = true),
-                child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () => setState(() => _onboardingStep = 2),
+                  child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
+                const Text(
+                  'What should we\ncall you?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: _Theme.primaryDark,
+                    height: 1.2,
+                    letterSpacing: -1.0,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _nameController,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your name...',
+                    hintStyle: const TextStyle(color: _Theme.textTertiary),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _Theme.border, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _Theme.primary, width: 2),
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = _nameController.text.trim();
+                    if (name.isNotEmpty) {
+                      _saveUserInfo(name);
+                    }
+                  },
+                  child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   // ─── 2. TOP HEADER ─────────────────────────────────────────────────────────
@@ -279,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeDashboardTab() {
     final total = _historyLogs.length;
-    final healthy = _historyLogs.where((l) => l.healthStatus == 'Healthy').length;
+    final healthy = _historyLogs.where((l) => _getDynamicHealth(l).$2).length;
     final deficient = total - healthy;
 
     final tomatoes = _historyLogs.where((l) => l.input.vegetableType == 'Tomato').length;
@@ -305,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Hello, Gardener!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+                Text('Hello, ${_userName.isEmpty ? 'Gardener' : _userName}!', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
                 const SizedBox(height: 4),
                 Text(
                   total == 0 ? 'Start your digital garden by adding your first plant.' : 'Your digital garden is doing well. Explore stats below.',
@@ -327,24 +435,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 12),
           Expanded(child: _statCard('Healthy', '$healthy', 'Status', _Theme.primary)),
           const SizedBox(width: 12),
-          Expanded(child: _statCard('At Risk', '$deficient', 'Deficient', Colors.orange[800]!)),
+          Expanded(child: _statCard('At Risk', '$deficient', 'At Risk', Colors.orange[800]!)),
         ]),
         const SizedBox(height: 24),
 
         // Crop Breakdown
         const Text('CROP DISTRIBUTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
         const SizedBox(height: 12),
-        Container(
-          decoration: _Theme.card,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(children: [
-            _cropBreakdownRow('🍅 Tomato', tomatoes, total),
-            const Divider(height: 20, color: _Theme.border),
-            _cropBreakdownRow('🍆 Eggplant', eggplants, total),
-            const Divider(height: 20, color: _Theme.border),
-            _cropBreakdownRow('🌶️ Chili', chilis, total),
-          ]),
-        ),
+        _buildCropDistributionBarGraph(tomatoes, eggplants, chilis, total),
         const SizedBox(height: 24),
 
         // Expert System Tip
@@ -397,24 +495,72 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _cropBreakdownRow(String label, int count, int total) {
-    final pct = total > 0 ? count / total : 0.0;
-    return Row(children: [
-      Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Theme.textPrimary))),
-      Text('$count plants ', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
-      Container(
-        width: 60,
-        height: 6,
-        decoration: BoxDecoration(color: _Theme.border, borderRadius: BorderRadius.circular(3)),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            width: 60 * pct,
-            decoration: BoxDecoration(color: _Theme.primary, borderRadius: BorderRadius.circular(3)),
+  Widget _buildCropDistributionBarGraph(int tomatoes, int eggplants, int chilis, int total) {
+    return Container(
+      decoration: _Theme.card,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildCropBar('🍅 Tomato', tomatoes, total, Colors.red[400]!),
+          const SizedBox(height: 16),
+          _buildCropBar('🍆 Eggplant', eggplants, total, Colors.purple[400]!),
+          const SizedBox(height: 16),
+          _buildCropBar('🌶️ Chili', chilis, total, Colors.orange[400]!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCropBar(String name, int count, int total, Color barColor) {
+    final double percent = total > 0 ? count / total : 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              name,
+              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: _Theme.textPrimary),
+            ),
+            Text(
+              '$count (${(percent * 100).round()}%)',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _Theme.textSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 12,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F2),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Container(
+                    width: constraints.maxWidth * percent,
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(6),
+                      gradient: LinearGradient(
+                        colors: [barColor, barColor.withOpacity(0.8)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
           ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 
   // ─── TAB 2: ADD PLANT TAB ──────────────────────────────────────────────────
@@ -433,8 +579,12 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildDateRow(),
             const SizedBox(height: 24),
 
-            _buildGroupHeader('Stage & Season'),
-            _buildStageSeasonGroup(),
+            _buildGroupHeader('Current Stage'),
+            _buildStagePicker(),
+            const SizedBox(height: 24),
+
+            _buildGroupHeader('Season'),
+            _buildSeasonPicker(),
             const SizedBox(height: 24),
 
             _buildGroupHeader('Conditions'),
@@ -548,49 +698,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStageSeasonGroup() {
-    return Container(
-      decoration: _Theme.card,
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        InkWell(
-          onTap: () => _showPicker(
-            context, 'Select Stage', GrowthStage.values,
-            _selectedStage, (v) => setState(() => _selectedStage = v as GrowthStage),
-            (v) => '${(v as GrowthStage).nameEnglish}',
-          ),
+  Widget _buildStagePicker() {
+    final stages = [
+      (GrowthStage.seedling, '🌱', 'Seedling'),
+      (GrowthStage.youngPlant, '🌿', 'Young Plant'),
+      (GrowthStage.flowering, '🌼', 'Flowering'),
+      (GrowthStage.fruiting, '🍎', 'Fruiting'),
+    ];
+    return Row(
+      children: stages.map((stage) {
+        final (value, emoji, label) = stage;
+        final isSel = _selectedStage == value;
+        return Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(children: [
-              const Icon(Icons.eco_outlined, size: 18, color: _Theme.primary),
-              const SizedBox(width: 14),
-              const Expanded(child: Text('Current Stage', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _Theme.textPrimary))),
-              Text(_selectedStage.nameEnglish, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _Theme.textSecondary)),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, size: 18, color: _Theme.textTertiary),
-            ]),
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedStage = value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSel ? _Theme.primary.withOpacity(0.06) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSel ? _Theme.primary : _Theme.border,
+                    width: isSel ? 1.5 : 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(emoji, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                        color: isSel ? _Theme.primary : _Theme.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        const Divider(height: 1, color: _Theme.border),
-        InkWell(
-          onTap: () => _showPicker(
-            context, 'Select Season', Season.values,
-            _selectedSeason, (v) => setState(() => _selectedSeason = v as Season),
-            (v) => '${(v as Season).nameEnglish}',
-          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSeasonPicker() {
+    final seasons = [
+      (Season.dry, '☀️', 'Dry Season'),
+      (Season.wet, '🌧️', 'Wet Season'),
+    ];
+    return Row(
+      children: seasons.map((season) {
+        final (value, emoji, label) = season;
+        final isSel = _selectedSeason == value;
+        return Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Row(children: [
-              const Icon(Icons.wb_twilight_outlined, size: 18, color: _Theme.primary),
-              const SizedBox(width: 14),
-              const Expanded(child: Text('Season', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _Theme.textPrimary))),
-              Text(_selectedSeason.nameEnglish, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _Theme.textSecondary)),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, size: 18, color: _Theme.textTertiary),
-            ]),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedSeason = value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSel ? _Theme.primary.withOpacity(0.06) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSel ? _Theme.primary : _Theme.border,
+                    width: isSel ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(emoji, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                        color: isSel ? _Theme.primary : _Theme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ]),
+        );
+      }).toList(),
     );
   }
 
@@ -815,7 +1017,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final elapsed = DateTime.now().difference(plant.input.plantingDate).inDays;
     final daysLeft = (pred.totalDaysToHarvest - elapsed).clamp(0, pred.totalDaysToHarvest);
     final progress = (elapsed / pred.totalDaysToHarvest).clamp(0.0, 1.0);
-    final isHealthy = plant.healthStatus == 'Healthy';
+    final isHealthy = _getDynamicHealth(plant).$2;
 
     return Card(
       child: InkWell(
@@ -961,45 +1163,79 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     _plant = widget.plant;
     _prediction = CellularAutomataEngine.predictGrowth(_plant.input);
     final elapsed = DateTime.now().difference(_plant.input.plantingDate).inDays;
-    _currentDay = elapsed.clamp(0, _prediction.totalDaysToHarvest);
+    _currentDay = (elapsed + 1).clamp(1, _prediction.totalDaysToHarvest + 1);
   }
 
-  // Modern action dialog allowing quantity inputs
   Future<void> _showAddActionDialog() async {
     String selectedAction = _actions[0];
-    final dayPred = _prediction.timeline[_currentDay];
+    final dayPred = _prediction.timeline[(_currentDay - 1).clamp(0, _prediction.totalDaysToHarvest)];
     final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
     final averageWater = (minRec + maxRec) ~/ 2;
 
     final quantityController = TextEditingController(text: '${averageWater} mL');
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Log Daily Care Action', style: TextStyle(fontWeight: FontWeight.w800, color: _Theme.primaryDark)),
-          content: Column(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 24, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Select Care Action:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.textSecondary)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _Theme.border),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedAction,
-                    isExpanded: true,
-                    items: _actions.map((act) => DropdownMenuItem(value: act, child: Text(act))).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() {
-                          selectedAction = val;
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Log Daily Care',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _Theme.primaryDark, letterSpacing: -0.5),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: _Theme.textSecondary),
+                    onPressed: () => Navigator.pop(ctx, false),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('SELECT ACTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _actions.map((act) {
+                  final isSel = selectedAction == act;
+                  String emoji = '🔧';
+                  if (act == 'Watered') emoji = '💧';
+                  if (act == 'Fertilized') emoji = '🧪';
+                  if (act == 'Weeded') emoji = '🌿';
+                  if (act == 'Protected from Rain') emoji = '🌧️';
+                  if (act == 'Moved Location') emoji = '🚚';
+
+                  return ChoiceChip(
+                    label: Text(
+                      '$emoji $act',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                        color: isSel ? Colors.white : _Theme.textSecondary,
+                      ),
+                    ),
+                    selected: isSel,
+                    selectedColor: _Theme.primary,
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setModalState(() {
+                          selectedAction = act;
                           if (selectedAction == 'Watered') {
                             quantityController.text = '${averageWater} mL';
                           } else {
@@ -1008,77 +1244,49 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         });
                       }
                     },
-                  ),
-                ),
+                  );
+                }).toList(),
               ),
+              const SizedBox(height: 24),
               if (selectedAction == 'Watered') ...[
+                const Text('WATER QUANTITY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
                 const SizedBox(height: 8),
                 Text(
-                  'Recommended daily: $minRec - $maxRec mL for this stage.',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.primary),
+                  'Recommended daily limit: $minRec - $maxRec mL for this stage.',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
                 ),
+                const SizedBox(height: 8),
+              ] else ...[
+                const Text('QUANTITY / DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                const SizedBox(height: 8),
               ],
-              const SizedBox(height: 18),
-              const Text('Quantity / Description (e.g. 500 mL, 15g):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.textSecondary)),
-              const SizedBox(height: 8),
               TextField(
                 controller: quantityController,
-                onChanged: (text) {
-                  setDialogState(() {});
-                },
                 decoration: InputDecoration(
-                  hintText: 'e.g. 500 mL, 15g, etc.',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _Theme.border)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _Theme.border)),
+                  hintText: selectedAction == 'Watered' ? 'e.g. 300 mL' : 'e.g. fertilizer brand, weeding notes...',
+                  hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAF9),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
               ),
-              Builder(
-                builder: (context) {
-                  final text = quantityController.text.trim();
-                  if (selectedAction == 'Watered' && text.isNotEmpty) {
-                    final ml = RecommendationEngine.parseWaterQuantity(text);
-                    if (ml != null) {
-                      if (ml > maxRec * 3) {
-                        return const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            '⚠️ Severe Overwatering warning! High risk of root rot.',
-                            style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        );
-                      } else if (ml > maxRec) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '⚠️ Overwatering limit is $maxRec mL for this stage.',
-                            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        );
-                      } else if (ml < minRec) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '⚠️ Underwatering. Recommended minimum is $minRec mL.',
-                            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        );
-                      }
-                    }
-                  }
-                  return const SizedBox.shrink();
-                }
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Theme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Save Action Log', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600))),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: _Theme.primary, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
-              child: const Text('Save Log', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ],
         ),
       ),
     );
@@ -1117,9 +1325,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dayPred = _prediction.timeline[_currentDay];
-    final daysLeft = _prediction.totalDaysToHarvest - _currentDay;
-    final progress = _currentDay / _prediction.totalDaysToHarvest;
+    final dayPred = _prediction.timeline[(_currentDay - 1).clamp(0, _prediction.totalDaysToHarvest)];
+    final daysLeft = (_prediction.totalDaysToHarvest + 1 - _currentDay).clamp(0, _prediction.totalDaysToHarvest + 1);
+    final progress = ((_currentDay - 1) / _prediction.totalDaysToHarvest).clamp(0.0, 1.0);
     final filteredLogs = _plant.careLogs.where((l) => l.dayOffset == _currentDay).toList();
 
     // Calculate dynamic health based on care logs
@@ -1171,7 +1379,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 style: const TextStyle(color: _Theme.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 6),
-              Text('Day $_currentDay / ${_prediction.totalDaysToHarvest}', style: const TextStyle(color: _Theme.textSecondary, fontSize: 14, fontWeight: FontWeight.w600)),
+              Text('Day $_currentDay / ${_prediction.totalDaysToHarvest + 1}', style: const TextStyle(color: _Theme.textSecondary, fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(
+                'Date: ${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).month}/${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).day}/${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).year}',
+                style: const TextStyle(color: _Theme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 18),
               ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(
                 value: progress, minHeight: 8,
@@ -1181,31 +1394,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             ]),
           ),
           const SizedBox(height: 16),
-
-          // ── Day Navigator ──
-          Container(
-            decoration: _Theme.card,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left, size: 24, color: _Theme.primary),
-                onPressed: _currentDay > 0 ? () => setState(() => _currentDay--) : null,
-              ),
-              Column(children: [
-                Text('Day $_currentDay', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
-                const SizedBox(height: 2),
-                Text(
-                  '${_plant.input.plantingDate.add(Duration(days: _currentDay)).month}/${_plant.input.plantingDate.add(Duration(days: _currentDay)).day}/${_plant.input.plantingDate.add(Duration(days: _currentDay)).year}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _Theme.textSecondary),
-                ),
-              ]),
-              IconButton(
-                icon: const Icon(Icons.chevron_right, size: 24, color: _Theme.primary),
-                onPressed: _currentDay < _prediction.totalDaysToHarvest ? () => setState(() => _currentDay++) : null,
-              ),
-            ]),
-          ),
-          const SizedBox(height: 12),
 
           // ── Stats row ──
           Row(children: [
