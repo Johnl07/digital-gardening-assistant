@@ -15,20 +15,35 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          primary: Colors.green.shade700,
-          secondary: Colors.teal.shade700,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF2D6A4F),       // Fresh forest green
+          secondary: Color(0xFF52B788),     // Bright mint accent
+          surface: Colors.white,
+          error: Color(0xFFD90429),
         ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.green.shade700,
-          foregroundColor: Colors.white,
-          elevation: 2,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1B4332),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFE9EFEA), width: 1),
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
+            backgroundColor: const Color(0xFF2D6A4F),
             foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),

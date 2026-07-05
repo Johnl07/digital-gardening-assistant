@@ -4,11 +4,13 @@ class DailyAction {
   final int dayOffset;
   final String action;
   final DateTime timestamp;
+  final String quantity;
 
   DailyAction({
     required this.dayOffset,
     required this.action,
     required this.timestamp,
+    this.quantity = '',
   });
 
   Map<String, dynamic> toJson() {
@@ -16,6 +18,7 @@ class DailyAction {
       'dayOffset': dayOffset,
       'action': action,
       'timestamp': timestamp.toIso8601String(),
+      'quantity': quantity,
     };
   }
 
@@ -24,6 +27,7 @@ class DailyAction {
       dayOffset: json['dayOffset'] as int,
       action: json['action'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      quantity: (json['quantity'] as String?) ?? '',
     );
   }
 }
