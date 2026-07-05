@@ -1173,6 +1173,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final averageWater = (minRec + maxRec) ~/ 2;
 
     final quantityController = TextEditingController(text: '${averageWater} mL');
+    final descriptionController = TextEditingController();
 
     final confirm = await showModalBottomSheet<bool>(
       context: context,
@@ -1182,112 +1183,167 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 24, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Log Daily Care',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _Theme.primaryDark, letterSpacing: -0.5),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: _Theme.textSecondary),
-                    onPressed: () => Navigator.pop(ctx, false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text('SELECT ACTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _actions.map((act) {
-                  final isSel = selectedAction == act;
-                  String emoji = '🔧';
-                  if (act == 'Watered') emoji = '💧';
-                  if (act == 'Fertilized') emoji = '🧪';
-                  if (act == 'Weeded') emoji = '🌿';
-                  if (act == 'Protected from Rain') emoji = '🌧️';
-                  if (act == 'Moved Location') emoji = '🚚';
+        builder: (context, setModalState) {
+          bool showQuantity = false;
+          bool showDescription = true;
+          String quantityLabel = 'QUANTITY';
+          String quantityHint = 'e.g. 50g, 10mL';
+          String descriptionLabel = 'DETAILS / NOTES';
+          String descriptionHint = 'Add any additional notes...';
 
-                  return ChoiceChip(
-                    label: Text(
-                      '$emoji $act',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                        color: isSel ? Colors.white : _Theme.textSecondary,
+          if (selectedAction == 'Watered') {
+            showQuantity = true;
+            quantityLabel = 'WATER QUANTITY';
+            quantityHint = 'e.g. 300 mL';
+            descriptionLabel = 'WATERING NOTES (OPTIONAL)';
+            descriptionHint = 'e.g. morning watering, rainwater...';
+          } else if (selectedAction == 'Fertilized') {
+            showQuantity = true;
+            quantityLabel = 'FERTILIZER QUANTITY';
+            quantityHint = 'e.g. 15g, 10 mL';
+            descriptionLabel = 'FERTILIZER BRAND / TYPE';
+            descriptionHint = 'e.g. Organic Compost, 14-14-14 NPK';
+          } else if (selectedAction == 'Weeded') {
+            showQuantity = false;
+            descriptionLabel = 'WEEDING DETAILS';
+            descriptionHint = 'e.g. cleared crabgrass around base...';
+          } else if (selectedAction == 'Protected from Rain') {
+            showQuantity = false;
+            descriptionLabel = 'PROTECTION DETAILS';
+            descriptionHint = 'e.g. moved under roof canopy...';
+          } else if (selectedAction == 'Moved Location') {
+            showQuantity = false;
+            descriptionLabel = 'NEW LOCATION DETAILS (SUNLIGHT, ETC.)';
+            descriptionHint = 'e.g. moved to east window with 6h direct sunlight...';
+          }
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 24, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Log Daily Care',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _Theme.primaryDark, letterSpacing: -0.5),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: _Theme.textSecondary),
+                      onPressed: () => Navigator.pop(ctx, false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('SELECT ACTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _actions.map((act) {
+                    final isSel = selectedAction == act;
+                    String emoji = '🔧';
+                    if (act == 'Watered') emoji = '💧';
+                    if (act == 'Fertilized') emoji = '🧪';
+                    if (act == 'Weeded') emoji = '🌿';
+                    if (act == 'Protected from Rain') emoji = '🌧️';
+                    if (act == 'Moved Location') emoji = '🚚';
+
+                    return ChoiceChip(
+                      label: Text(
+                        '$emoji $act',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                          color: isSel ? Colors.white : _Theme.textSecondary,
+                        ),
+                      ),
+                      selected: isSel,
+                      selectedColor: _Theme.primary,
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
+                      ),
+                      onSelected: (selected) {
+                        if (selected) {
+                          setModalState(() {
+                            selectedAction = act;
+                            if (selectedAction == 'Watered') {
+                              quantityController.text = '${averageWater} mL';
+                            } else {
+                              quantityController.text = '';
+                            }
+                            descriptionController.text = '';
+                          });
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                if (showQuantity) ...[
+                  Text(quantityLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  const SizedBox(height: 8),
+                  if (selectedAction == 'Watered') ...[
+                    Text(
+                      'Recommended daily limit: $minRec - $maxRec mL for this stage.',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  TextField(
+                    controller: quantityController,
+                    decoration: InputDecoration(
+                      hintText: quantityHint,
+                      hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAF9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
                     ),
-                    selected: isSel,
-                    selectedColor: _Theme.primary,
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setModalState(() {
-                          selectedAction = act;
-                          if (selectedAction == 'Watered') {
-                            quantityController.text = '${averageWater} mL';
-                          } else {
-                            quantityController.text = '';
-                          }
-                        });
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              if (selectedAction == 'Watered') ...[
-                const Text('WATER QUANTITY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
-                const SizedBox(height: 8),
-                Text(
-                  'Recommended daily limit: $minRec - $maxRec mL for this stage.',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
-                ),
-                const SizedBox(height: 8),
-              ] else ...[
-                const Text('QUANTITY / DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
-                const SizedBox(height: 8),
-              ],
-              TextField(
-                controller: quantityController,
-                decoration: InputDecoration(
-                  hintText: selectedAction == 'Watered' ? 'e.g. 300 mL' : 'e.g. fertilizer brand, weeding notes...',
-                  hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAF9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
                   ),
+                  const SizedBox(height: 20),
+                ],
+                if (showDescription) ...[
+                  Text(descriptionLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      hintText: descriptionHint,
+                      hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAF9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _Theme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Save Action Log', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
                 ),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _Theme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Save Action Log', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        }
       ),
     );
 
@@ -1298,6 +1354,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           action: selectedAction,
           timestamp: DateTime.now(),
           quantity: quantityController.text.trim(),
+          description: descriptionController.text.trim(),
         ));
 
       setState(() {
@@ -1503,7 +1560,13 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            log.quantity.isNotEmpty ? '${log.action} (${log.quantity})' : log.action, 
+                            log.quantity.isNotEmpty && log.description.isNotEmpty
+                                ? '${log.action} (${log.quantity}) — ${log.description}'
+                                : log.quantity.isNotEmpty
+                                    ? '${log.action} (${log.quantity})'
+                                    : log.description.isNotEmpty
+                                        ? '${log.action} — ${log.description}'
+                                        : log.action, 
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
                           ),
                           const SizedBox(height: 2),
