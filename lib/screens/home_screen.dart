@@ -9,15 +9,16 @@ import '../services/storage_service.dart';
 
 // ─── Minimalist Green & White Design System ──────────────────────────────────
 class _Theme {
-  static const primary = Color(0xFF2D6A4F);      // Fresh forest green
-  static const primaryDark = Color(0xFF1B4332);  // Deep forest green
-  static const accent = Color(0xFF52B788);       // Bright mint accent
-  static const bg = Color(0xFFFAFAFA);           // Clean off-white background
+  static const primary = Color(0xFF2C5530);      // Forest Green
+  static const primaryDark = Color(0xFF1D3920);  // Dark Forest Green
+  static const accent = Color(0xFF88A07A);       // Soft Sage
+  static const bg = Color(0xFFF9F8F4);           // Warm Cream
   static const cardBg = Colors.white;            // White card background
-  static const border = Color(0xFFE9EFEA);       // Very thin soft green-grey border
-  static const textPrimary = Color(0xFF1B2E24);  // Charcoal deep green-black
-  static const textSecondary = Color(0xFF5A7365);// Muted soft green-grey
-  static const textTertiary = Color(0xFF9EBAAA); // Muted light green-grey
+  static const border = Color(0xFFE5E9E4);       // Sage-tinted thin border
+  static const textPrimary = Color(0xFF1E2320);  // Slate Charcoal text
+  static const textSecondary = Color(0xFF55605A);// Muted soft charcoal
+  static const textTertiary = Color(0xFF8E9B94); // Light soft charcoal
+  static const highlight = Color(0xFFC27B5C);    // Earthy Terracotta
 
   static const r12 = BorderRadius.all(Radius.circular(12));
   static const r16 = BorderRadius.all(Radius.circular(16));

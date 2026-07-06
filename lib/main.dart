@@ -16,16 +16,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+        scaffoldBackgroundColor: const Color(0xFFF9F8F4),
         colorScheme: const ColorScheme.light(
-          primary: Color(0xFF2D6A4F),       // Fresh forest green
-          secondary: Color(0xFF52B788),     // Bright mint accent
+          primary: Color(0xFF2C5530),       // Forest Green
+          secondary: Color(0xFF88A07A),     // Soft Sage
           surface: Colors.white,
-          error: Color(0xFFD90429),
+          error: Color(0xFFC27B5C),         // Earthy Terracotta
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF1B4332),
+          foregroundColor: Color(0xFF1E2320), // Slate Charcoal
           elevation: 0,
           scrolledUnderElevation: 0,
         ),
@@ -34,12 +34,12 @@ class MyApp extends StatelessWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE9EFEA), width: 1),
+            side: const BorderSide(color: Color(0xFFE5E9E4), width: 1),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2D6A4F),
+            backgroundColor: const Color(0xFF2C5530),
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
