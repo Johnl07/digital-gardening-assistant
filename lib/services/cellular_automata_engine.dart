@@ -101,27 +101,30 @@ class CellularAutomataEngine {
     // 4. Determine starting day offset based on current stage
     int startDay = _getStartDayForStage(input.currentStage, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
 
-    // 5. Build stage start days map
+    // 5. Build stage start days map (relative to startDay so day 0 = user's selected stage)
     Map<GrowthStage, int> stageStartDays = {
-      GrowthStage.seedling: 0,
-      GrowthStage.youngPlant: adjSeedlingEnd,
-      GrowthStage.flowering: adjYoungEnd,
-      GrowthStage.fruiting: adjFloweringEnd,
+      GrowthStage.seedling: (0 - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.youngPlant: (adjSeedlingEnd - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.flowering: (adjYoungEnd - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.fruiting: (adjFloweringEnd - startDay).clamp(0, adjHarvestDay),
     };
 
-    // 6. Run internal CA simulation to refine health scores per day
+    // 6. Run internal CA simulation to refine health scores per day (over full lifecycle)
     List<double> healthPerDay = _runInternalCA(input, envFactor, adjHarvestDay);
 
-    // 7. Generate day-by-day predictions
+    // 7. Generate day-by-day predictions starting from the user's selected stage
+    //    Day 0 in the timeline = startDay in the full lifecycle
     List<DayPrediction> timeline = [];
-    for (int day = 0; day <= adjHarvestDay; day++) {
-      GrowthStage stage = _getStageForDay(day, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
-      String milestone = _getMilestone(day, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd, adjHarvestDay, input.vegetableType);
-      String tip = _getDailyTip(day, stage, input, envFactor, adjHarvestDay);
-      double health = day < healthPerDay.length ? healthPerDay[day] : envFactor;
+    final int remainingDays = adjHarvestDay - startDay;
+    for (int offset = 0; offset <= remainingDays; offset++) {
+      final int absoluteDay = startDay + offset;
+      GrowthStage stage = _getStageForDay(absoluteDay, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
+      String milestone = _getMilestone(absoluteDay, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd, adjHarvestDay, input.vegetableType);
+      String tip = _getDailyTip(absoluteDay, stage, input, envFactor, adjHarvestDay);
+      double health = absoluteDay < healthPerDay.length ? healthPerDay[absoluteDay] : envFactor;
 
       timeline.add(DayPrediction(
-        day: day,
+        day: offset, // relative day: 0 = today (user's selected stage)
         stage: stage,
         healthScore: health,
         milestone: milestone,
@@ -135,7 +138,7 @@ class CellularAutomataEngine {
 
     return GrowthPredictionResult(
       timeline: timeline,
-      totalDaysToHarvest: adjHarvestDay,
+      totalDaysToHarvest: remainingDays, // remaining days from the selected stage
       stageStartDays: stageStartDays,
       overallHealthScore: overallHealth.clamp(0.0, 1.0),
     );
@@ -250,11 +253,11 @@ class CellularAutomataEngine {
   }
 
   static String _getMilestone(int day, int seedEnd, int youngEnd, int flowerEnd, int fruitEnd, int harvestDay, String crop) {
-    if (day == 0) return '🌱 Simula ng Pagtatanim!';
-    if (day == seedEnd) return '🌿 Lumaki na bilang Young Plant!';
-    if (day == youngEnd) return '🌼 Nagsimulang Mamulaklak!';
-    if (day == flowerEnd) return '🍎 Nagsimulang Mamunga!';
-    if (day == harvestDay) return '🎉 Handa na para sa Pag-aani (Harvest)!';
+    if (day == 0) return '🌱 Start of Planting!';
+    if (day == seedEnd) return '🌿 Grown into a Young Plant!';
+    if (day == youngEnd) return '🌼 Started Flowering!';
+    if (day == flowerEnd) return '🍎 Started Fruiting!';
+    if (day == harvestDay) return '🎉 Ready for Harvest!';
     return '';
   }
 
@@ -266,40 +269,40 @@ class CellularAutomataEngine {
 
     // Environmental warnings take priority
     if (input.water == WaterLevel.high && input.season == Season.wet) {
-      return 'Babala: Masyadong basa ang lupa. Bawasan ang pagdidilig para maiwasan ang pagkabulok ng ugat.';
+      return 'Warning: Soil is too wet. Reduce watering to avoid root rot.';
     }
     if (input.water == WaterLevel.low && input.sunlight == SunlightLevel.high) {
-      return 'Babala: Maaaring malanta ang halaman. Dagdagan ang pagdidilig, lalo na sa tanghali.';
+      return 'Warning: Plant may wilt. Increase watering, especially at midday.';
     }
     if (input.soil == SoilQuality.poor) {
-      return 'Maglagay ng organic compost o pataba upang mapabuti ang kalidad ng lupa.';
+      return 'Apply organic compost or fertilizer to improve soil quality.';
     }
 
     // Stage-specific tips
     switch (stage) {
       case GrowthStage.seedling:
-        if (day <= 3) return 'Bagong tanim! Diligan ng bahagya. Protektahan mula sa direktang sikat ng araw.';
-        if (day <= 7) return 'Bantayan ang paglitaw ng unang mga dahon. Panatilihin ang lupa na mamasa-masa.';
-        if (isTomato) return 'Ang seedling ng kamatis ay nangangailangan ng 6-8 oras na sikat ng araw araw-araw.';
-        if (isEggplant) return 'Ang seedling ng talong ay sensitibo sa lamig. Panatilihin sa mainit na lugar.';
-        return 'Mag-ingat sa mga peste tulad ng aphids sa mga bagong tubo.';
+        if (day <= 3) return 'Newly planted! Water lightly. Protect from direct hot sunlight.';
+        if (day <= 7) return 'Watch for the first leaves. Keep soil moist.';
+        if (isTomato) return 'Tomato seedlings need 6-8 hours of sunlight daily.';
+        if (isEggplant) return 'Eggplant seedlings are sensitive to cold. Keep them in a warm area.';
+        return 'Watch out for pests like aphids on new shoots.';
 
       case GrowthStage.youngPlant:
-        if (isTomato) return 'Maglagay ng tukod (stakes) upang suportahan ang lumalaking puno ng kamatis.';
-        if (isEggplant) return 'Siguraduhin ang 8-10 oras na sikat ng araw para sa malusog na pagsibol ng talong.';
-        return 'Mag-prune ng mga ligaw na sanga upang matutukan ang lakas ng halaman sa pangunahing tangkay.';
+        if (isTomato) return 'Install stakes to support the growing tomato plant.';
+        if (isEggplant) return 'Ensure 8-10 hours of sunlight for healthy eggplant growth.';
+        return 'Prune stray branches to focus the plant\'s energy on the main stem.';
 
       case GrowthStage.flowering:
-        if (isTomato) return 'Bawasan ang Nitrogen fertilizer. Dagdagan ang Potassium para sa mas maraming bulaklak.';
-        if (isEggplant) return 'Huwag hayaang matuyo ang lupa habang namumulaklak ang talong.';
-        return 'Iwasan ang malakas na pagdidilig sa mga bulaklak para hindi malaglag.';
+        if (isTomato) return 'Reduce Nitrogen fertilizer. Increase Potassium for more flowers.';
+        if (isEggplant) return 'Do not let the soil dry out while the eggplant is flowering.';
+        return 'Avoid heavy watering on the flowers to prevent them from dropping.';
 
       case GrowthStage.fruiting:
-        if (daysLeft <= 14) return '🎉 Malapit na ang ani! Tinatayang $daysLeft araw na lang bago mag-harvest.';
-        if (daysLeft <= 30) return 'Malapit na mahinog ang mga bunga! Mga $daysLeft araw bago mag-harvest.';
-        if (isTomato) return 'Suportahan ang mga sangang may bunga gamit ang tukod. Diligan ng regular.';
-        if (isEggplant) return 'Ang talong ay handa nang anihin kapag makintab at matigas pa ang balat.';
-        return 'Regular na suriin ang mga bunga para sa mga palatandaan ng peste o sakit.';
+        if (daysLeft <= 14) return '🎉 Harvest is near! Estimated $daysLeft days remaining.';
+        if (daysLeft <= 30) return 'Fruits are ripening! About $daysLeft days to harvest.';
+        if (isTomato) return 'Support branches with fruit using stakes. Water regularly.';
+        if (isEggplant) return 'Eggplants are ready to harvest when the skin is glossy and firm.';
+        return 'Regularly inspect the fruit for signs of pests or disease.';
     }
   }
 
