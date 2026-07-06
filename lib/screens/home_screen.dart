@@ -1105,6 +1105,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? _Theme.accent : _Theme.primary),
                       ),
                     ),
+                    // ── Today's Task Badges ──
+                    Builder(builder: (_) {
+                      final currentDay = (elapsed + 1).clamp(1, pred.totalDaysToHarvest + 1);
+                      final todayLogs = plant.careLogs.where((l) => l.dayOffset == currentDay).toList();
+                      final doneToday = todayLogs.map((l) => l.action).toSet().toList();
+                      if (doneToday.isEmpty) return const SizedBox.shrink();
+                      String _actionEmoji(String a) {
+                        if (a == 'Watered') return '💧';
+                        if (a == 'Fertilized') return '🧪';
+                        if (a == 'Weeded') return '🌿';
+                        if (a == 'Moved Location') return '🚚';
+                        return '✅';
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: doneToday.map((action) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _Theme.primary.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: _Theme.primary.withOpacity(0.2)),
+                            ),
+                            child: Text(
+                              '${_actionEmoji(action)} $action',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _Theme.primary),
+                            ),
+                          )).toList(),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -1165,7 +1198,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     'Watered',
     'Fertilized',
     'Weeded',
-    'Protected from Rain',
     'Moved Location',
   ];
 
@@ -1180,6 +1212,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   Future<void> _showAddActionDialog() async {
     String selectedAction = _actions[0];
+    SunlightLevel selectedSunlight = _plant.input.sunlight;
     final dayPred = _prediction.timeline[(_currentDay - 1).clamp(0, _prediction.totalDaysToHarvest)];
     final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
     final averageWater = (minRec + maxRec) ~/ 2;
@@ -1219,14 +1252,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             showQuantity = false;
             descriptionLabel = 'WEEDING DETAILS';
             descriptionHint = 'e.g. cleared crabgrass around base...';
-          } else if (selectedAction == 'Protected from Rain') {
-            showQuantity = false;
-            descriptionLabel = 'PROTECTION DETAILS';
-            descriptionHint = 'e.g. moved under roof canopy...';
           } else if (selectedAction == 'Moved Location') {
             showQuantity = false;
-            descriptionLabel = 'NEW LOCATION DETAILS (SUNLIGHT, ETC.)';
-            descriptionHint = 'e.g. moved to east window with 6h direct sunlight...';
+            descriptionLabel = 'NEW LOCATION DETAILS (OPTIONAL)';
+            descriptionHint = 'e.g. moved to patio canopy...';
           }
 
           return Padding(
@@ -1260,7 +1289,6 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     if (act == 'Watered') emoji = '💧';
                     if (act == 'Fertilized') emoji = '🧪';
                     if (act == 'Weeded') emoji = '🌿';
-                    if (act == 'Protected from Rain') emoji = '🌧️';
                     if (act == 'Moved Location') emoji = '🚚';
 
                     return ChoiceChip(
@@ -1296,6 +1324,48 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 24),
+
+                // ── Sunlight Level Picker for Moved Location ──
+                if (selectedAction == 'Moved Location') ...[
+                  const Text('NEW SUNLIGHT LEVEL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: SunlightLevel.values.map((level) {
+                      final isSel = selectedSunlight == level;
+                      String levelText = level == SunlightLevel.low ? 'Low' : level == SunlightLevel.medium ? 'Medium' : 'High';
+                      String emoji = level == SunlightLevel.low ? '☁️' : level == SunlightLevel.medium ? '⛅' : '☀️';
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(
+                            '$emoji $levelText',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                              color: isSel ? Colors.white : _Theme.textSecondary,
+                            ),
+                          ),
+                          selected: isSel,
+                          selectedColor: _Theme.primary,
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                selectedSunlight = level;
+                              });
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
                 if (showQuantity) ...[
                   Text(quantityLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
                   const SizedBox(height: 8),
@@ -1306,6 +1376,72 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
+                  if (selectedAction == 'Fertilized') ...[
+                    Builder(builder: (_) {
+                      final fertRec = RecommendationEngine.getFertilizerRecommendation(
+                        _plant.input.vegetableType,
+                        dayPred.stage,
+                      );
+                      if (!fertRec.needed) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                          ),
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Icon(Icons.warning_amber_rounded, color: Colors.orange[800], size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                fertRec.tip,
+                                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.orange[900], height: 1.4),
+                              ),
+                            ),
+                          ]),
+                        );
+                      }
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _Theme.primary.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _Theme.primary.withOpacity(0.15)),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Icon(Icons.science_outlined, color: _Theme.primary, size: 16),
+                            const SizedBox(width: 6),
+                            Text('FERTILIZER GUIDE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _Theme.primary, letterSpacing: 0.6)),
+                          ]),
+                          const SizedBox(height: 8),
+                          _fertRow('🧪 Type', fertRec.type),
+                          const SizedBox(height: 4),
+                          _fertRow('⚖️ Amount', fertRec.amount),
+                          const SizedBox(height: 4),
+                          _fertRow('📅 Frequency', fertRec.frequency),
+                          const SizedBox(height: 8),
+                          Text(fertRec.tip, style: TextStyle(fontSize: 11.5, color: _Theme.textSecondary, height: 1.4, fontStyle: FontStyle.italic)),
+                        ]),
+                      );
+                    }),
+                  ],
+                  // Fertilizer recommended range hint
+                  if (selectedAction == 'Fertilized')
+                    Builder(builder: (_) {
+                      final (minG, maxG) = RecommendationEngine.getFertilizerRange(_plant.input.vegetableType, dayPred.stage);
+                      if (minG == 0 && maxG == 0) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'Recommended per application: $minG–${maxG}g for this stage.',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
+                        ),
+                      );
+                    }),
                   TextField(
                     controller: quantityController,
                     decoration: InputDecoration(
@@ -1343,8 +1479,131 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                 ],
+                // ── Already Done Today Warning ──
+                Builder(builder: (_) {
+                  final alreadyDone = _plant.careLogs
+                      .where((l) => l.dayOffset == _currentDay && l.action == selectedAction)
+                      .isNotEmpty;
+                  if (!alreadyDone) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                      ),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.amber[800], size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'You already logged "$selectedAction" today. Logging again will add to today\'s total.',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.amber[900], height: 1.4),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  );
+                }),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
+                  onPressed: () async {
+                    // 1. Auto-append units
+                    String rawQty = quantityController.text.trim();
+                    if (selectedAction == 'Watered' && rawQty.isNotEmpty) {
+                      final isPureNumber = RegExp(r'^\d+(\.\d+)?$').hasMatch(rawQty);
+                      if (isPureNumber) rawQty = '$rawQty mL';
+                    } else if (selectedAction == 'Fertilized' && rawQty.isNotEmpty) {
+                      final isPureNumber = RegExp(r'^\d+(\.\d+)?$').hasMatch(rawQty);
+                      if (isPureNumber) rawQty = '$rawQty g';
+                    }
+
+                    // 2. Perform validation for confirmation prompt
+                    List<String> actionWarnings = [];
+                    
+                    if (selectedAction == 'Watered') {
+                      final ml = RecommendationEngine.parseWaterQuantity(rawQty);
+                      if (ml != null) {
+                        final (minRec, maxRec) = RecommendationEngine.getWateringRange(_plant.input.vegetableType, dayPred.stage);
+                        if (ml > maxRec) {
+                          actionWarnings.add('Watering quantity ($ml mL) is higher than the recommended maximum ($maxRec mL).');
+                        } else if (ml < minRec) {
+                          actionWarnings.add('Watering quantity ($ml mL) is lower than the recommended minimum ($minRec mL).');
+                        }
+                      } else if (rawQty.isNotEmpty) {
+                        actionWarnings.add('Could not parse water quantity. Please enter a valid number.');
+                      }
+                      
+                      final alreadyWatered = _plant.careLogs.any((l) => l.dayOffset == _currentDay && l.action == 'Watered');
+                      if (alreadyWatered) {
+                        actionWarnings.add('You have already watered this plant today.');
+                      }
+                    } else if (selectedAction == 'Fertilized') {
+                      final fertRec = RecommendationEngine.getFertilizerRecommendation(_plant.input.vegetableType, dayPred.stage);
+                      if (!fertRec.needed) {
+                        actionWarnings.add('Fertilizer is not recommended for this growth stage.');
+                      } else {
+                        final g = RecommendationEngine.parseFertilizerQuantity(rawQty);
+                        if (g != null) {
+                          final (minRec, maxRec) = RecommendationEngine.getFertilizerRange(_plant.input.vegetableType, dayPred.stage);
+                          if (g > maxRec) {
+                            actionWarnings.add('Fertilizer quantity (${g}g) exceeds the recommended maximum (${maxRec}g).');
+                          } else if (g < minRec) {
+                            actionWarnings.add('Fertilizer quantity (${g}g) is below the recommended minimum (${minRec}g).');
+                          }
+                        } else if (rawQty.isNotEmpty) {
+                          actionWarnings.add('Could not parse fertilizer quantity. Please enter a valid number.');
+                        }
+                      }
+                      
+                      final alreadyFertilized = _plant.careLogs.any((l) => l.dayOffset == _currentDay && l.action == 'Fertilized');
+                      if (alreadyFertilized) {
+                        actionWarnings.add('You have already fertilized this plant today.');
+                      }
+                    }
+
+                    if (actionWarnings.isNotEmpty) {
+                      final proceed = await showDialog<bool>(
+                        context: context,
+                        builder: (alertCtx) => AlertDialog(
+                          title: const Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              SizedBox(width: 8),
+                              Text('Warning'),
+                            ],
+                          ),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Are you sure you want to log this action? The following issues were detected:'),
+                              const SizedBox(height: 12),
+                              ...actionWarnings.map((w) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Text('• $w', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.redAccent)),
+                              )),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(alertCtx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(alertCtx, true),
+                              child: const Text('Proceed Anyway'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (proceed != true) return;
+                    }
+
+                    quantityController.text = rawQty;
+                    Navigator.pop(ctx, true);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _Theme.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1369,12 +1628,26 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           description: descriptionController.text.trim(),
         ));
 
+      PlantInput updatedInput = _plant.input;
+      if (selectedAction == 'Moved Location') {
+        updatedInput = PlantInput(
+          vegetableType: _plant.input.vegetableType,
+          plantingDate: _plant.input.plantingDate,
+          currentStage: _plant.input.currentStage,
+          season: _plant.input.season,
+          sunlight: selectedSunlight,
+          water: _plant.input.water,
+          soil: _plant.input.soil,
+        );
+      }
+
       setState(() {
         _plant = PredictionLog(
-          id: _plant.id, input: _plant.input, predictedStage: _plant.predictedStage,
+          id: _plant.id, input: updatedInput, predictedStage: _plant.predictedStage,
           healthStatus: _plant.healthStatus, recommendations: _plant.recommendations,
           timestamp: _plant.timestamp, careLogs: updatedLogs,
         );
+        _prediction = CellularAutomataEngine.predictGrowth(_plant.input);
       });
       widget.onUpdate(_plant);
     }
@@ -1475,6 +1748,23 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           ]),
           const SizedBox(height: 12),
 
+          // ── Plant Conditions Card ──
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: const Text('PLANT CONDITIONS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+          ),
+          Container(
+            decoration: _Theme.card,
+            clipBehavior: Clip.antiAlias,
+            child: Column(children: [
+              _conditionRow(Icons.wb_sunny_outlined, Colors.amber[700]!, 'Sunlight', _plant.input.sunlight.nameEnglish, false),
+              _conditionRow(Icons.water_drop_outlined, Colors.blue[600]!, 'Water', _plant.input.water.nameEnglish, false),
+              _conditionRow(Icons.layers_outlined, Colors.brown[600]!, 'Soil', _plant.input.soil.nameEnglish, false),
+              _conditionRow(Icons.cloud_outlined, Colors.teal[600]!, 'Season', _plant.input.season.nameEnglish, true),
+            ]),
+          ),
+          const SizedBox(height: 24),
+
           // ── Milestone ──
           if (dayPred.milestone.isNotEmpty) ...[
             Container(
@@ -1523,6 +1813,63 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 ),
               ])),
             ]),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Upcoming Care Plan — Next 7 Days ──
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: const Text('UPCOMING CARE PLAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+          ),
+          Container(
+            decoration: _Theme.card,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: List.generate(7, (i) {
+                final futureIndex = (_currentDay + i).clamp(0, _prediction.timeline.length - 1);
+                if (futureIndex >= _prediction.timeline.length) return const SizedBox.shrink();
+                final futurePred = _prediction.timeline[futureIndex];
+                final isLast = i == 6 || (_currentDay + i) >= _prediction.timeline.length - 1;
+                final dayLabel = i == 0 ? 'Today' : i == 1 ? 'Tomorrow' : 'Day +$i';
+                return Column(children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: _Theme.primary.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(child: Text(_stageEmoji(futurePred.stage), style: const TextStyle(fontSize: 18))),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Text(dayLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+                          const SizedBox(width: 8),
+                          if (futurePred.milestone.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _Theme.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text('Milestone', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _Theme.primary)),
+                            ),
+                        ]),
+                        const SizedBox(height: 4),
+                        Text(
+                          futurePred.milestone.isNotEmpty ? futurePred.milestone : futurePred.dailyTip,
+                          style: const TextStyle(fontSize: 12.5, color: _Theme.textSecondary, height: 1.4, fontWeight: FontWeight.w500),
+                        ),
+                      ])),
+                    ]),
+                  ),
+                  if (!isLast) const Divider(height: 1, color: _Theme.border),
+                ]);
+              }),
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -1610,5 +1957,29 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
       ]),
     );
+  }
+
+  Widget _conditionRow(IconData icon, Color iconColor, String label, String value, bool isLast) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Row(children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+        ]),
+      ),
+      if (!isLast) const Divider(height: 1, color: _Theme.border),
+    ]);
+  }
+
+  Widget _fertRow(String label, String value) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.textPrimary)),
+      const SizedBox(width: 6),
+      Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _Theme.textSecondary))),
+    ]);
   }
 }

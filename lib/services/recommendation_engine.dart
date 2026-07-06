@@ -142,6 +142,48 @@ class RecommendationEngine {
     );
   }
 
+  /// Parses fertilizer quantity text (e.g., "15g", "20 grams") into numerical grams.
+  static int? parseFertilizerQuantity(String text) {
+    if (text.isEmpty) return null;
+    final cleaned = text.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    final numberMatch = RegExp(r'^[\d]+(\.\d+)?').firstMatch(cleaned);
+    if (numberMatch == null) return null;
+    final double value = double.tryParse(numberMatch.group(0)!) ?? 0;
+    // Convert kg to g if needed
+    if (cleaned.contains('kg')) return (value * 1000).round();
+    return value.round(); // Default is grams
+  }
+
+  /// Returns (minRecommended, maxRecommended) fertilizer in grams per plant per application.
+  static (int, int) getFertilizerRange(String crop, GrowthStage stage) {
+    final c = crop.toLowerCase();
+    final bool isTomato = c.contains('tomato') || c.contains('kamatis');
+    final bool isEggplant = c.contains('eggplant') || c.contains('talong');
+
+    if (isTomato) {
+      switch (stage) {
+        case GrowthStage.seedling: return (0, 0);
+        case GrowthStage.youngPlant: return (8, 12);
+        case GrowthStage.flowering: return (12, 18);
+        case GrowthStage.fruiting: return (8, 12);
+      }
+    } else if (isEggplant) {
+      switch (stage) {
+        case GrowthStage.seedling: return (0, 0);
+        case GrowthStage.youngPlant: return (10, 15);
+        case GrowthStage.flowering: return (12, 18);
+        case GrowthStage.fruiting: return (8, 12);
+      }
+    } else { // Chili
+      switch (stage) {
+        case GrowthStage.seedling: return (0, 0);
+        case GrowthStage.youngPlant: return (8, 10);
+        case GrowthStage.flowering: return (8, 12);
+        case GrowthStage.fruiting: return (6, 10);
+      }
+    }
+  }
+
   /// Parses text quantities (e.g., "10000ml", "1.5L", "500") into numerical milliliters.
   static int? parseWaterQuantity(String text) {
     if (text.isEmpty) return null;
@@ -187,6 +229,113 @@ class RecommendationEngine {
     }
   }
 
+  /// Returns fertilizer recommendation per crop and growth stage.
+  static FertilizerRecommendation getFertilizerRecommendation(String crop, GrowthStage stage) {
+    final c = crop.toLowerCase();
+    final bool isTomato = c.contains('tomato') || c.contains('kamatis');
+    final bool isEggplant = c.contains('eggplant') || c.contains('talong');
+
+    // Seedling stage: fertilizer NOT recommended for any crop
+    if (stage == GrowthStage.seedling) {
+      return FertilizerRecommendation(
+        needed: false,
+        type: 'None',
+        amount: 'N/A',
+        frequency: 'N/A',
+        tip: 'Do not fertilize at seedling stage — roots are too tender and can get burned by fertilizer.',
+      );
+    }
+
+    if (isTomato) {
+      switch (stage) {
+        case GrowthStage.seedling:
+          return FertilizerRecommendation(needed: false, type: 'None', amount: 'N/A', frequency: 'N/A', tip: 'Do not fertilize at seedling stage.');
+        case GrowthStage.youngPlant:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Nitrogen-rich (e.g. Urea 46-0-0 or Ammonium Sulfate)',
+            amount: '10g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Focus on Nitrogen to boost leaf and stem growth.',
+          );
+        case GrowthStage.flowering:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Phosphorus & Potassium-rich (e.g. 0-46-0 or 14-14-14)',
+            amount: '15g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Reduce Nitrogen. Increase Phosphorus and Potassium to encourage more flowers and fruit set.',
+          );
+        case GrowthStage.fruiting:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Low-Nitrogen, Potassium-rich (e.g. 0-0-60 Muriate of Potash)',
+            amount: '10g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Potassium improves fruit quality and sweetness. Avoid excess Nitrogen which causes leafy growth at the expense of fruit.',
+          );
+      }
+    } else if (isEggplant) {
+      switch (stage) {
+        case GrowthStage.seedling:
+          return FertilizerRecommendation(needed: false, type: 'None', amount: 'N/A', frequency: 'N/A', tip: 'Do not fertilize at seedling stage.');
+        case GrowthStage.youngPlant:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Balanced NPK (e.g. 14-14-14 complete fertilizer)',
+            amount: '10–15g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Balanced fertilizer supports even growth of roots, stems, and early leaves.',
+          );
+        case GrowthStage.flowering:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Potassium-rich (e.g. 0-0-60 or 12-12-17)',
+            amount: '15g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Boost Potassium during flowering to prevent flower drop and support fruit development.',
+          );
+        case GrowthStage.fruiting:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Light Potassium feed (e.g. 12-12-17)',
+            amount: '10g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Light feeding keeps the plant productive. Heavy fertilization at this stage causes more leaves, not more fruit.',
+          );
+      }
+    } else { // Siling Labuyo / Chili
+      switch (stage) {
+        case GrowthStage.seedling:
+          return FertilizerRecommendation(needed: false, type: 'None', amount: 'N/A', frequency: 'N/A', tip: 'Do not fertilize at seedling stage.');
+        case GrowthStage.youngPlant:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Balanced NPK (e.g. 14-14-14)',
+            amount: '8–10g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Balanced NPK encourages bushy, branching growth which leads to more fruit sites.',
+          );
+        case GrowthStage.flowering:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Phosphorus-rich (e.g. 0-46-0 Superphosphate)',
+            amount: '10g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'High Phosphorus promotes strong flower formation. More flowers means more chilis!',
+          );
+        case GrowthStage.fruiting:
+          return FertilizerRecommendation(
+            needed: true,
+            type: 'Light Potassium feed (e.g. 0-0-60)',
+            amount: '8g per plant',
+            frequency: 'Every 2 weeks',
+            tip: 'Light Potassium keeps fruits firm and spicy. Avoid heavy fertilization to prevent leaf burn.',
+          );
+      }
+    }
+  }
+
   /// Evaluates current day's care logs and returns safety flags/warnings and health score offsets.
   static DailyValidationResult validateDailyActions({
     required String crop,
@@ -225,9 +374,34 @@ class RecommendationEngine {
 
     // Evaluate Fertilization logs
     final fertilizingActions = actions.where((a) => a.action == 'Fertilized').toList();
-    if (fertilizingActions.length > 1) { // Too frequent in a single day
-      warnings.add("Excessive Fertilization: Fertilizing multiple times in a single day causes chemical burn to roots (nutrient burn). Limit to once every 2 weeks.");
-      healthScoreModifier -= 25;
+    if (fertilizingActions.isNotEmpty) {
+      // Check if fertilizer is even needed at this stage
+      final fertRec = getFertilizerRecommendation(crop, stage);
+      if (!fertRec.needed) {
+        warnings.add("Fertilizer Not Recommended: Applying fertilizer at ${stage.nameEnglish} stage can burn tender roots. Skip fertilization at this stage.");
+        healthScoreModifier -= 20;
+      } else {
+        // Parse and validate total fertilizer quantity
+        int totalFertG = 0;
+        for (var action in fertilizingActions) {
+          final g = parseFertilizerQuantity(action.quantity);
+          if (g != null) totalFertG += g;
+        }
+        if (totalFertG > 0) {
+          final (minRec, maxRec) = getFertilizerRange(crop, stage);
+          if (totalFertG > maxRec * 2) { // Severe over-fertilization
+            warnings.add("Severe Over-Fertilization: ${totalFertG}g applied is dangerously high! This causes nutrient burn — leaves will yellow and roots may be damaged. Max recommended: ${maxRec}g.");
+            healthScoreModifier -= 40;
+          } else if (totalFertG > maxRec) { // Mild over-fertilization
+            warnings.add("Over-Fertilization Alert: ${totalFertG}g exceeds the recommended maximum (${maxRec}g). Excess fertilizer causes salt buildup in soil. Water thoroughly to dilute.");
+            healthScoreModifier -= 20;
+          }
+        }
+        if (fertilizingActions.length > 1) { // Multiple times same day
+          warnings.add("Excessive Fertilization: Fertilizing multiple times in a single day causes nutrient burn. Limit to once every 2 weeks.");
+          healthScoreModifier -= 15;
+        }
+      }
     }
 
     return DailyValidationResult(
@@ -341,5 +515,21 @@ class DailyValidationResult {
   DailyValidationResult({
     required this.healthScoreModifier,
     required this.warnings,
+  });
+}
+
+class FertilizerRecommendation {
+  final bool needed;
+  final String type;
+  final String amount;
+  final String frequency;
+  final String tip;
+
+  FertilizerRecommendation({
+    required this.needed,
+    required this.type,
+    required this.amount,
+    required this.frequency,
+    required this.tip,
   });
 }

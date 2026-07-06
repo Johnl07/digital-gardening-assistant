@@ -101,27 +101,30 @@ class CellularAutomataEngine {
     // 4. Determine starting day offset based on current stage
     int startDay = _getStartDayForStage(input.currentStage, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
 
-    // 5. Build stage start days map
+    // 5. Build stage start days map (relative to startDay so day 0 = user's selected stage)
     Map<GrowthStage, int> stageStartDays = {
-      GrowthStage.seedling: 0,
-      GrowthStage.youngPlant: adjSeedlingEnd,
-      GrowthStage.flowering: adjYoungEnd,
-      GrowthStage.fruiting: adjFloweringEnd,
+      GrowthStage.seedling: (0 - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.youngPlant: (adjSeedlingEnd - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.flowering: (adjYoungEnd - startDay).clamp(0, adjHarvestDay),
+      GrowthStage.fruiting: (adjFloweringEnd - startDay).clamp(0, adjHarvestDay),
     };
 
-    // 6. Run internal CA simulation to refine health scores per day
+    // 6. Run internal CA simulation to refine health scores per day (over full lifecycle)
     List<double> healthPerDay = _runInternalCA(input, envFactor, adjHarvestDay);
 
-    // 7. Generate day-by-day predictions
+    // 7. Generate day-by-day predictions starting from the user's selected stage
+    //    Day 0 in the timeline = startDay in the full lifecycle
     List<DayPrediction> timeline = [];
-    for (int day = 0; day <= adjHarvestDay; day++) {
-      GrowthStage stage = _getStageForDay(day, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
-      String milestone = _getMilestone(day, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd, adjHarvestDay, input.vegetableType);
-      String tip = _getDailyTip(day, stage, input, envFactor, adjHarvestDay);
-      double health = day < healthPerDay.length ? healthPerDay[day] : envFactor;
+    final int remainingDays = adjHarvestDay - startDay;
+    for (int offset = 0; offset <= remainingDays; offset++) {
+      final int absoluteDay = startDay + offset;
+      GrowthStage stage = _getStageForDay(absoluteDay, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd);
+      String milestone = _getMilestone(absoluteDay, adjSeedlingEnd, adjYoungEnd, adjFloweringEnd, adjFruitingEnd, adjHarvestDay, input.vegetableType);
+      String tip = _getDailyTip(absoluteDay, stage, input, envFactor, adjHarvestDay);
+      double health = absoluteDay < healthPerDay.length ? healthPerDay[absoluteDay] : envFactor;
 
       timeline.add(DayPrediction(
-        day: day,
+        day: offset, // relative day: 0 = today (user's selected stage)
         stage: stage,
         healthScore: health,
         milestone: milestone,
@@ -135,7 +138,7 @@ class CellularAutomataEngine {
 
     return GrowthPredictionResult(
       timeline: timeline,
-      totalDaysToHarvest: adjHarvestDay,
+      totalDaysToHarvest: remainingDays, // remaining days from the selected stage
       stageStartDays: stageStartDays,
       overallHealthScore: overallHealth.clamp(0.0, 1.0),
     );
