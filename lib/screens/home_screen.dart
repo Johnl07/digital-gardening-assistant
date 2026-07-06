@@ -20,12 +20,29 @@ class _Theme {
   static const textTertiary = Color(0xFF7A8F83); // Light soft green-grey
   static const highlight = Color(0xFF9C27B0);    // Floral Violet
 
+  static bool isDarkMode = false;                      // Dynamic dark mode state
+
+  // Dynamic getters for widgets we override
+  static Color get dBg => isDarkMode ? const Color(0xFF0F1411) : bg;
+  static Color get dCardBg => isDarkMode ? const Color(0xFF181F1A) : cardBg;
+  static Color get dBorder => isDarkMode ? const Color(0xFF263229) : border;
+  static Color get dTextPrimary => isDarkMode ? const Color(0xFFF1F5F2) : textPrimary;
+  static Color get dTextSecondary => isDarkMode ? const Color(0xFFA1B0A6) : textSecondary;
+  static Color get dTextTertiary => isDarkMode ? const Color(0xFF6B7870) : textTertiary;
+  static Color get dPrimaryDark => isDarkMode ? const Color(0xFF81C784) : primaryDark;
+
   static const r12 = BorderRadius.all(Radius.circular(12));
   static const r16 = BorderRadius.all(Radius.circular(16));
 
-  static BoxDecoration card = BoxDecoration(
-    color: cardBg,
+  static BoxDecoration get dCard => BoxDecoration(
+    color: dCardBg,
     borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: dBorder, width: 1),
+  );
+
+  static final card = BoxDecoration(
+    color: cardBg,
+    borderRadius: BorderRadius.all(Radius.circular(16)),
     border: Border.all(color: border, width: 1),
   );
 }
@@ -53,6 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
   SoilQuality _selectedSoil = SoilQuality.moderate;
 
   List<PredictionLog> _historyLogs = [];
+  bool _isDarkMode = false;
+  String _filterVegetable = 'All';
+  String _filterStatus = 'All';
+  String _sortBy = 'Date Added';
 
   @override
   void initState() {
@@ -66,10 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _userName = prefs.getString('user_name') ?? '';
       _hasStarted = prefs.getBool('has_started') ?? false;
+      _isDarkMode = prefs.getBool('is_dark_mode') ?? false;
+      _Theme.isDarkMode = _isDarkMode;
       if (_userName.isNotEmpty) {
         _nameController.text = _userName;
       }
     });
+  }
+
+  Future<void> _saveThemePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_dark_mode', _isDarkMode);
   }
 
   Future<void> _saveUserInfo(String name) async {
@@ -188,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _Theme.bg,
+      backgroundColor: _Theme.dBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -212,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildOnboardingScreen() {
     if (_onboardingStep == 1) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _Theme.dBg,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -231,24 +259,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                const Text(
+                Text(
                   'Digital Gardening\nAssistant',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: _Theme.primaryDark,
+                    color: _Theme.dPrimaryDark,
                     height: 1.2,
                     letterSpacing: -1.0,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'A virtual plant doctor and smart calendar tracker powered by Cellular Automata models.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: _Theme.textSecondary,
+                    color: _Theme.dTextSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -265,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: _Theme.dBg,
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -273,13 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Spacer(),
-                const Text(
+                Text(
                   'What should we\ncall you?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: _Theme.primaryDark,
+                    color: _Theme.dPrimaryDark,
                     height: 1.2,
                     letterSpacing: -1.0,
                   ),
@@ -291,18 +319,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   textAlign: TextAlign.center,
                   decoration: InputDecoration(
                     hintText: 'Enter your name...',
-                    hintStyle: const TextStyle(color: _Theme.textTertiary),
+                    hintStyle: TextStyle(color: _Theme.dTextTertiary),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _Theme.border, width: 1.5),
+                      borderSide: BorderSide(color: _Theme.dBorder, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: _Theme.primary, width: 2),
                     ),
                   ),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
                 ),
                 const Spacer(),
                 ElevatedButton(
@@ -327,25 +355,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopHeader() {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: _Theme.border, width: 1)),
+      decoration: BoxDecoration(
+        color: _Theme.dCardBg,
+        border: Border(bottom: BorderSide(color: _Theme.dBorder, width: 1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
           const Text('🌿', style: TextStyle(fontSize: 24)),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'Garden Assistant',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: _Theme.primaryDark,
+              color: _Theme.dPrimaryDark,
               letterSpacing: -0.5,
             ),
           ),
           const Spacer(),
+          IconButton(
+            icon: Icon(_isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: _Theme.primary),
+            onPressed: () {
+              setState(() {
+                _isDarkMode = !_isDarkMode;
+                _Theme.isDarkMode = _isDarkMode;
+              });
+              _saveThemePreference();
+            },
+            tooltip: 'Toggle Dark Mode',
+          ),
           if (_tabIndex == 2 && _historyLogs.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
@@ -361,18 +400,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavigationBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _Theme.border, width: 1)),
+      decoration: BoxDecoration(
+        color: _Theme.dCardBg,
+        border: Border(top: BorderSide(color: _Theme.dBorder, width: 1)),
       ),
       child: BottomNavigationBar(
         currentIndex: _tabIndex,
         onTap: (index) => setState(() => _tabIndex = index),
-        backgroundColor: Colors.white,
+        backgroundColor: _Theme.dCardBg,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: _Theme.primary,
-        unselectedItemColor: _Theme.textSecondary,
+        unselectedItemColor: _Theme.dTextSecondary,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
         items: const [
@@ -401,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Welcome Card
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: _Theme.card,
+          decoration: _Theme.dCard,
           child: Row(children: [
             Container(
               padding: const EdgeInsets.all(12),
@@ -414,11 +453,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Hello, ${_userName.isEmpty ? 'Gardener' : _userName}!', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+                Text('Hello, ${_userName.isEmpty ? 'Gardener' : _userName}!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
                 const SizedBox(height: 4),
                 Text(
                   total == 0 ? 'Start your digital garden by adding your first plant.' : 'Your digital garden is doing well. Explore stats below.',
-                  style: const TextStyle(fontSize: 13, color: _Theme.textSecondary, height: 1.4),
+                  style: TextStyle(fontSize: 13, color: _Theme.dTextSecondary, height: 1.4),
                 ),
               ]),
             ),
@@ -427,21 +466,21 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 24),
 
         // Statistics Title
-        const Text('PLANT STATISTICS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+        Text('PLANT STATISTICS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
         const SizedBox(height: 12),
 
         // Core Stats Grid
         Row(children: [
           Expanded(child: _statCard('Active Plants', '$total', 'Total', Colors.blue)),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(child: _statCard('Healthy', '$healthy', 'Status', _Theme.primary)),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(child: _statCard('At Risk', '$deficient', 'At Risk', Colors.orange[800]!)),
         ]),
         const SizedBox(height: 24),
 
         // Crop Breakdown
-        const Text('CROP DISTRIBUTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+        Text('CROP DISTRIBUTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
         const SizedBox(height: 12),
         _buildCropDistributionBarGraph(tomatoes, eggplants, chilis, total),
         const SizedBox(height: 24),
@@ -454,16 +493,16 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _Theme.primary.withOpacity(0.1)),
           ),
-          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(Icons.lightbulb_outline_rounded, color: Colors.amber, size: 24),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('DAILY GARDEN TIP', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                Text('DAILY GARDEN TIP', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
                 const SizedBox(height: 6),
                 Text(
                   'Regular watering in the morning reduces leaf dampness and prevents fungal infections in high humidity climates.',
-                  style: TextStyle(fontSize: 13.5, color: _Theme.textPrimary, height: 1.4, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 13.5, color: _Theme.dTextPrimary, height: 1.4, fontWeight: FontWeight.w500),
                 ),
               ]),
             ),
@@ -476,11 +515,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _statCard(String label, String value, String unit, Color accentColor) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: _Theme.card,
+      decoration: _Theme.dCard,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _Theme.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _Theme.dTextSecondary)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -488,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: accentColor)),
               const SizedBox(width: 4),
-              Text(unit, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
+              Text(unit, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.dTextSecondary)),
             ],
           ),
         ],
@@ -498,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCropDistributionBarGraph(int tomatoes, int eggplants, int chilis, int total) {
     return Container(
-      decoration: _Theme.card,
+      decoration: _Theme.dCard,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -523,7 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               name,
-              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: _Theme.textPrimary),
+              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary),
             ),
             Text(
               '$count (${(percent * 100).round()}%)',
@@ -602,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGroupHeader(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 10),
-      child: Text(text.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+      child: Text(text.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
     );
   }
 
@@ -628,10 +667,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
-                  color: isSel ? Colors.white : Colors.white.withOpacity(0.4),
+                  color: isSel ? _Theme.dCardBg : _Theme.dCardBg.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSel ? _Theme.primary : _Theme.border,
+                    color: isSel ? _Theme.primary : _Theme.dBorder,
                     width: isSel ? 2 : 1,
                   ),
                 ),
@@ -644,7 +683,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                        color: isSel ? _Theme.textPrimary : _Theme.textSecondary,
+                        color: isSel ? _Theme.primary : _Theme.dTextSecondary,
                       ),
                     ),
                   ],
@@ -660,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDateRow() {
     return Container(
-      decoration: _Theme.card,
+      decoration: _Theme.dCard,
       child: InkWell(
         onTap: () async {
           final picked = await showDatePicker(
@@ -671,10 +710,10 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, child) {
               return Theme(
                 data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.light(
+                  colorScheme: ColorScheme.light(
                     primary: _Theme.primary,
                     onPrimary: Colors.white,
-                    onSurface: _Theme.textPrimary,
+                    onSurface: _Theme.dTextPrimary,
                   ),
                 ),
                 child: child!,
@@ -690,13 +729,13 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(children: [
             const Icon(Icons.calendar_today_outlined, size: 18, color: _Theme.primary),
             const SizedBox(width: 14),
-            const Expanded(child: Text('Planting Date', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _Theme.textPrimary))),
+            Expanded(child: Text('Planting Date', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _Theme.dTextPrimary))),
             Text(
               '${_selectedDate.month}/${_selectedDate.day}/${_selectedDate.year}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _Theme.primary),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 18, color: _Theme.textTertiary),
+            Icon(Icons.chevron_right, size: 18, color: _Theme.dTextTertiary),
           ]),
         ),
       ),
@@ -726,10 +765,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: isSel ? _Theme.primary.withOpacity(0.06) : Colors.white,
+                    color: isSel ? _Theme.primary.withOpacity(0.06) : _Theme.dCardBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSel ? _Theme.primary : _Theme.border,
+                      color: isSel ? _Theme.primary : _Theme.dBorder,
                       width: isSel ? 1.5 : 1,
                     ),
                   ),
@@ -742,7 +781,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                          color: isSel ? _Theme.primary : _Theme.textSecondary,
+                          color: isSel ? _Theme.primary : _Theme.dTextSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -778,10 +817,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: isSel ? _Theme.primary.withOpacity(0.06) : Colors.white,
+                    color: isSel ? _Theme.primary.withOpacity(0.06) : _Theme.dCardBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSel ? _Theme.primary : _Theme.border,
+                      color: isSel ? _Theme.primary : _Theme.dBorder,
                       width: isSel ? 1.5 : 1,
                     ),
                   ),
@@ -795,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                          color: isSel ? _Theme.primary : _Theme.textSecondary,
+                          color: isSel ? _Theme.primary : _Theme.dTextSecondary,
                         ),
                       ),
                     ],
@@ -811,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEnvironmentGroup() {
     return Container(
-      decoration: _Theme.card,
+      decoration: _Theme.dCard,
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         _buildEnvRow(
@@ -845,7 +884,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showPicker(BuildContext context, String title, List<dynamic> items, dynamic selected, Function(dynamic) onChanged, String Function(dynamic) labelFor) {
     return showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: _Theme.dCardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -871,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                    color: isSel ? _Theme.primary : _Theme.textPrimary,
+                    color: isSel ? _Theme.primary : _Theme.dTextPrimary,
                   ),
                 ),
                 trailing: isSel ? const Icon(Icons.check, color: _Theme.primary) : null,
@@ -897,13 +936,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(children: [
             Icon(icon, size: 20, color: iconColor),
             const SizedBox(width: 10),
-            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+            Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
           ]),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: _Theme.border.withOpacity(0.5),
+              color: _Theme.dBorder.withOpacity(0.5),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(children: values.map((val) {
@@ -916,16 +955,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSel ? Colors.white : Colors.transparent,
+                      color: isSel ? _Theme.dCardBg : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
-                      border: isSel ? Border.all(color: _Theme.border) : null,
+                      border: isSel ? Border.all(color: _Theme.dBorder) : null,
                     ),
                     child: Center(child: Text(
                       labelFor(val),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                        color: isSel ? _Theme.primary : _Theme.textSecondary,
+                        color: isSel ? _Theme.primary : _Theme.dTextSecondary,
                       ),
                     )),
                   ),
@@ -935,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ]),
       ),
-      if (!isLast) const Divider(height: 1, color: _Theme.border),
+      if (!isLast) Divider(height: 1, color: _Theme.dBorder),
     ]);
   }
 
@@ -955,9 +994,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ─── TAB 3: MY GARDEN / VIEW PLANTS ────────────────────────────────────────
 
+  Widget _filterChip(String label, String value, String selectedValue, Function(String) onSelected) {
+    final isSel = selectedValue == value;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontSize: 12, fontWeight: isSel ? FontWeight.w800 : FontWeight.w600, color: isSel ? Colors.white : _Theme.dTextSecondary)),
+      selected: isSel,
+      selectedColor: _Theme.primary,
+      backgroundColor: _Theme.dCardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: isSel ? _Theme.primary : _Theme.dBorder),
+      ),
+      onSelected: (sel) => onSelected(value),
+    );
+  }
+
   Widget _buildViewPlantsTab() {
     if (_historyLogs.isEmpty) {
       return _buildEmptyGarden();
+    }
+
+    final filtered = _historyLogs.where((plant) {
+      final matchesVeg = _filterVegetable == 'All' ||
+          plant.input.vegetableType == _filterVegetable;
+      
+      final isHealthy = _getDynamicHealth(plant).$2;
+      final matchesStatus = _filterStatus == 'All' ||
+          (_filterStatus == 'Healthy' && isHealthy) ||
+          (_filterStatus == 'Deficient' && !isHealthy);
+          
+      return matchesVeg && matchesStatus;
+    }).toList();
+
+    if (_sortBy == 'Days Left') {
+      filtered.sort((a, b) {
+        final predA = CellularAutomataEngine.predictGrowth(a.input);
+        final elapsedA = DateTime.now().difference(a.input.plantingDate).inDays;
+        final daysLeftA = (predA.totalDaysToHarvest - elapsedA).clamp(0, predA.totalDaysToHarvest);
+        
+        final predB = CellularAutomataEngine.predictGrowth(b.input);
+        final elapsedB = DateTime.now().difference(b.input.plantingDate).inDays;
+        final daysLeftB = (predB.totalDaysToHarvest - elapsedB).clamp(0, predB.totalDaysToHarvest);
+        
+        return daysLeftA.compareTo(daysLeftB);
+      });
+    } else if (_sortBy == 'Name') {
+      filtered.sort((a, b) => a.input.vegetableType.compareTo(b.input.vegetableType));
+    } else if (_sortBy == 'Health') {
+      filtered.sort((a, b) {
+        final healthA = _getDynamicHealth(a).$1;
+        final healthB = _getDynamicHealth(b).$1;
+        return healthB.compareTo(healthA);
+      });
     }
 
     return LayoutBuilder(
@@ -966,7 +1054,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return CustomScrollView(
           slivers: [
             SliverAppBar(
-              backgroundColor: _Theme.bg,
+              backgroundColor: _Theme.dBg,
               pinned: true,
               expandedHeight: 50,
               elevation: 0,
@@ -974,35 +1062,134 @@ class _HomeScreenState extends State<HomeScreen> {
               flexibleSpace: FlexibleSpaceBar(
                 titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 12),
                 title: Text(
-                  'My Garden (${_historyLogs.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.textPrimary),
+                  'My Garden (${filtered.length})',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _filterChip('Crop: All', 'All', _filterVegetable, (val) => setState(() => _filterVegetable = val)),
+                          const SizedBox(width: 8),
+                          _filterChip('🍅 Tomato', 'Tomato', _filterVegetable, (val) => setState(() => _filterVegetable = val)),
+                          const SizedBox(width: 8),
+                          _filterChip('🍆 Eggplant', 'Eggplant', _filterVegetable, (val) => setState(() => _filterVegetable = val)),
+                          const SizedBox(width: 8),
+                          _filterChip('🌶️ Chili', 'Siling Labuyo', _filterVegetable, (val) => setState(() => _filterVegetable = val)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: _Theme.dCardBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _Theme.dBorder),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _filterStatus,
+                                dropdownColor: _Theme.dCardBg,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
+                                icon: Icon(Icons.filter_list, size: 16, color: _Theme.primary),
+                                items: const [
+                                  DropdownMenuItem(value: 'All', child: Text('Filter: All Status')),
+                                  DropdownMenuItem(value: 'Healthy', child: Text('💚 Healthy Only')),
+                                  DropdownMenuItem(value: 'Deficient', child: Text('⚠️ Deficient Only')),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _filterStatus = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: _Theme.dCardBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _Theme.dBorder),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _sortBy,
+                                dropdownColor: _Theme.dCardBg,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
+                                icon: Icon(Icons.sort, size: 16, color: _Theme.primary),
+                                items: const [
+                                  DropdownMenuItem(value: 'Date Added', child: Text('Sort: Date Added')),
+                                  DropdownMenuItem(value: 'Days Left', child: Text('Sort: Days Left')),
+                                  DropdownMenuItem(value: 'Name', child: Text('Sort: Name')),
+                                  DropdownMenuItem(value: 'Health', child: Text('Sort: Health')),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _sortBy = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-              sliver: isWide
-                ? SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      mainAxisExtent: 160,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildPlantCard(_historyLogs[index]),
-                      childCount: _historyLogs.length,
+              sliver: filtered.isEmpty
+                ? SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Text(
+                          'No matching plants found.',
+                          style: TextStyle(color: _Theme.dTextSecondary, fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ),
                   )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildPlantCard(_historyLogs[index]),
+                : isWide
+                    ? SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: 160,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildPlantCard(filtered[index]),
+                          childCount: filtered.length,
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildPlantCard(filtered[index]),
+                          ),
+                          childCount: filtered.length,
+                        ),
                       ),
-                      childCount: _historyLogs.length,
-                    ),
-                  ),
             ),
           ],
         );
@@ -1014,9 +1201,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text('🪴', style: TextStyle(fontSize: 64)),
       const SizedBox(height: 16),
-      const Text('No Plants in Garden', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+      Text('No Plants in Garden', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
       const SizedBox(height: 6),
-      const Text('Add plants to monitor growth statistics.', style: TextStyle(color: _Theme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
+      Text('Add plants to monitor growth statistics.', style: TextStyle(color: _Theme.dTextSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
       const SizedBox(height: 24),
       ElevatedButton(
         onPressed: () => setState(() => _tabIndex = 1), // Redirect to Add Plant tab
@@ -1033,6 +1220,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final isHealthy = _getDynamicHealth(plant).$2;
 
     return Card(
+      color: _Theme.dCardBg,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: _Theme.dBorder, width: 1),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => Navigator.push(context, PageRouteBuilder(
@@ -1052,7 +1246,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 width: 60, height: 60,
                 decoration: BoxDecoration(
-                  color: _Theme.border.withOpacity(0.5),
+                  color: _Theme.dBorder.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(child: Text(_cropEmoji(plant.input.vegetableType), style: const TextStyle(fontSize: 32))),
@@ -1067,7 +1261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Text(
                           _cropName(plant.input.vegetableType),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.textPrimary),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary),
                         ),
                         const SizedBox(width: 8),
                         Container(
@@ -1087,13 +1281,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       daysLeft > 0 ? '$daysLeft days to harvest' : 'Ready to harvest! 🎉',
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: daysLeft <= 14 ? Colors.orange[800] : _Theme.textSecondary,
+                        color: daysLeft <= 14 ? Colors.orange[800] : _Theme.dTextSecondary,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -1102,7 +1296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 5,
-                        backgroundColor: _Theme.border,
+                        backgroundColor: _Theme.dBorder,
                         valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? _Theme.accent : _Theme.primary),
                       ),
                     ),
@@ -1142,11 +1336,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.chevron_right, size: 20, color: _Theme.textTertiary),
+                  Icon(Icons.chevron_right, size: 20, color: _Theme.dTextTertiary),
                   const SizedBox(height: 24),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
@@ -1224,7 +1418,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final confirm = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: _Theme.dCardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1268,18 +1462,18 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Log Daily Care',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _Theme.primaryDark, letterSpacing: -0.5),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _Theme.dPrimaryDark, letterSpacing: -0.5),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: _Theme.textSecondary),
+                      icon: Icon(Icons.close, color: _Theme.dTextSecondary),
                       onPressed: () => Navigator.pop(ctx, false),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text('SELECT ACTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                Text('SELECT ACTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -1298,15 +1492,15 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                          color: isSel ? Colors.white : _Theme.textSecondary,
+                          color: isSel ? Colors.white : _Theme.dTextSecondary,
                         ),
                       ),
                       selected: isSel,
                       selectedColor: _Theme.primary,
-                      backgroundColor: Colors.white,
+                      backgroundColor: _Theme.dCardBg,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
+                        side: BorderSide(color: isSel ? _Theme.primary : _Theme.dBorder, width: 1),
                       ),
                       onSelected: (selected) {
                         if (selected) {
@@ -1328,7 +1522,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
                 // ── Sunlight Level Picker for Moved Location ──
                 if (selectedAction == 'Moved Location') ...[
-                  const Text('NEW SUNLIGHT LEVEL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  Text('NEW SUNLIGHT LEVEL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
                   const SizedBox(height: 10),
                   Row(
                     children: SunlightLevel.values.map((level) {
@@ -1343,15 +1537,15 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
-                              color: isSel ? Colors.white : _Theme.textSecondary,
+                              color: isSel ? Colors.white : _Theme.dTextSecondary,
                             ),
                           ),
                           selected: isSel,
                           selectedColor: _Theme.primary,
-                          backgroundColor: Colors.white,
+                          backgroundColor: _Theme.dCardBg,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: isSel ? _Theme.primary : _Theme.border, width: 1),
+                            side: BorderSide(color: isSel ? _Theme.primary : _Theme.dBorder, width: 1),
                           ),
                           onSelected: (selected) {
                             if (selected) {
@@ -1368,12 +1562,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 ],
 
                 if (showQuantity) ...[
-                  Text(quantityLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  Text(quantityLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
                   const SizedBox(height: 8),
                   if (selectedAction == 'Watered') ...[
                     Text(
                       'Recommended daily limit: $minRec - $maxRec mL for this stage.',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -1425,7 +1619,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           const SizedBox(height: 4),
                           _fertRow('📅 Frequency', fertRec.frequency),
                           const SizedBox(height: 8),
-                          Text(fertRec.tip, style: TextStyle(fontSize: 11.5, color: _Theme.textSecondary, height: 1.4, fontStyle: FontStyle.italic)),
+                          Text(fertRec.tip, style: TextStyle(fontSize: 11.5, color: _Theme.dTextSecondary, height: 1.4, fontStyle: FontStyle.italic)),
                         ]),
                       );
                     }),
@@ -1439,7 +1633,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
                           'Recommended per application: $minG–${maxG}g for this stage.',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.primary),
                         ),
                       );
                     }),
@@ -1447,36 +1641,36 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     controller: quantityController,
                     decoration: InputDecoration(
                       hintText: quantityHint,
-                      hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
+                      hintStyle: TextStyle(color: _Theme.dTextTertiary, fontSize: 14),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
+                      fillColor: _Theme.isDarkMode ? const Color(0xFF263229) : const Color(0xFFF8FAF9),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
                   ),
                   const SizedBox(height: 20),
                 ],
                 if (showDescription) ...[
-                  Text(descriptionLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+                  Text(descriptionLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: descriptionController,
                     decoration: InputDecoration(
                       hintText: descriptionHint,
-                      hintStyle: const TextStyle(color: _Theme.textTertiary, fontSize: 14),
+                      hintStyle: TextStyle(color: _Theme.dTextTertiary, fontSize: 14),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAF9),
+                      fillColor: _Theme.isDarkMode ? const Color(0xFF263229) : const Color(0xFFF8FAF9),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -1683,9 +1877,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final double adjustedHealth = (rawHealth + (dailyValidation.healthScoreModifier / 100)).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: _Theme.bg,
+      backgroundColor: _Theme.dBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _Theme.dCardBg,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: _Theme.primary),
@@ -1693,7 +1887,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         ),
         title: Text(
           _cropName(_plant.input.vegetableType),
-          style: const TextStyle(color: _Theme.textPrimary, fontWeight: FontWeight.w800),
+          style: TextStyle(color: _Theme.dTextPrimary, fontWeight: FontWeight.w800),
         ),
       ),
       body: SingleChildScrollView(
@@ -1703,9 +1897,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _Theme.dCardBg,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _Theme.border, width: 1),
+              border: Border.all(color: _Theme.dBorder, width: 1),
             ),
             child: Column(children: [
               Container(
@@ -1719,20 +1913,20 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
               const SizedBox(height: 16),
               Text(
                 daysLeft > 0 ? 'Harvest in $daysLeft Days' : 'Ready for Harvest! 🎉',
-                style: const TextStyle(color: _Theme.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
+                style: TextStyle(color: _Theme.dTextPrimary, fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 6),
-              Text('Day $_currentDay / ${_prediction.totalDaysToHarvest + 1}', style: const TextStyle(color: _Theme.textSecondary, fontSize: 14, fontWeight: FontWeight.w600)),
+              Text('Day $_currentDay / ${_prediction.totalDaysToHarvest + 1}', style: TextStyle(color: _Theme.dTextSecondary, fontSize: 14, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(
                 'Date: ${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).month}/${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).day}/${_plant.input.plantingDate.add(Duration(days: _currentDay - 1)).year}',
-                style: const TextStyle(color: _Theme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(color: _Theme.dTextSecondary, fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 18),
               ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(
                 value: progress, minHeight: 8,
-                backgroundColor: _Theme.border,
-                valueColor: const AlwaysStoppedAnimation(_Theme.primary),
+                backgroundColor: _Theme.dBorder,
+                valueColor: AlwaysStoppedAnimation(_Theme.primary),
               )),
             ]),
           ),
@@ -1752,10 +1946,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           // ── Plant Conditions Card ──
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 10),
-            child: const Text('PLANT CONDITIONS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+            child: Text('PLANT CONDITIONS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
           ),
           Container(
-            decoration: _Theme.card,
+            decoration: _Theme.dCard,
             clipBehavior: Clip.antiAlias,
             child: Column(children: [
               _conditionRow(Icons.wb_sunny_outlined, Colors.amber[700]!, 'Sunlight', _plant.input.sunlight.nameEnglish, false),
@@ -1776,9 +1970,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 border: Border.all(color: _Theme.primary.withOpacity(0.2), width: 1),
               ),
               child: Row(children: [
-                const Icon(Icons.flag_outlined, color: _Theme.primary, size: 20),
-                const SizedBox(width: 12),
-                Expanded(child: Text(dayPred.milestone, style: const TextStyle(color: _Theme.primary, fontWeight: FontWeight.w800, fontSize: 13.5))),
+                Icon(Icons.flag_outlined, color: _Theme.primary, size: 20),
+                SizedBox(width: 12),
+                Expanded(child: Text(dayPred.milestone, style: TextStyle(color: _Theme.primary, fontWeight: FontWeight.w800, fontSize: 13.5))),
               ]),
             ),
             const SizedBox(height: 12),
@@ -1787,7 +1981,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           // ── Tip / Recommendations ──
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: _Theme.card,
+            decoration: _Theme.dCard,
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(
                 dailyValidation.warnings.isNotEmpty ? Icons.warning_amber_rounded : Icons.lightbulb_outline_rounded,
@@ -1802,7 +1996,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     fontSize: 11,
                     letterSpacing: 1.0,
                     fontWeight: FontWeight.w800,
-                    color: dailyValidation.warnings.isNotEmpty ? Colors.orange[800] : _Theme.textSecondary,
+                    color: dailyValidation.warnings.isNotEmpty ? Colors.orange[800] : _Theme.dTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1810,7 +2004,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   dailyValidation.warnings.isNotEmpty
                     ? dailyValidation.warnings.join('\n\n')
                     : (_plant.recommendations.isNotEmpty ? _plant.recommendations.join('\n') : dayPred.dailyTip),
-                  style: const TextStyle(fontSize: 13.5, color: _Theme.textPrimary, height: 1.5, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 13.5, color: _Theme.dTextPrimary, height: 1.5, fontWeight: FontWeight.w500),
                 ),
               ])),
             ]),
@@ -1820,10 +2014,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
           // ── Upcoming Care Plan — Next 7 Days ──
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 10),
-            child: const Text('UPCOMING CARE PLAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8)),
+            child: Text('UPCOMING CARE PLAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8)),
           ),
           Container(
-            decoration: _Theme.card,
+            decoration: _Theme.dCard,
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: List.generate(7, (i) {
@@ -1847,7 +2041,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       const SizedBox(width: 14),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(children: [
-                          Text(dayLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+                          Text(dayLabel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
                           const SizedBox(width: 8),
                           if (futurePred.milestone.isNotEmpty)
                             Container(
@@ -1862,12 +2056,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         const SizedBox(height: 4),
                         Text(
                           futurePred.milestone.isNotEmpty ? futurePred.milestone : futurePred.dailyTip,
-                          style: const TextStyle(fontSize: 12.5, color: _Theme.textSecondary, height: 1.4, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 12.5, color: _Theme.dTextSecondary, height: 1.4, fontWeight: FontWeight.w500),
                         ),
                       ])),
                     ]),
                   ),
-                  if (!isLast) const Divider(height: 1, color: _Theme.border),
+                  if (!isLast) Divider(height: 1, color: _Theme.dBorder),
                 ]);
               }),
             ),
@@ -1893,19 +2087,19 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
             padding: const EdgeInsets.only(left: 4, bottom: 10),
             child: Text(
               'LOGGED ACTIVITIES (${filteredLogs.length})'.toUpperCase(),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.textSecondary, letterSpacing: 0.8),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _Theme.dTextSecondary, letterSpacing: 0.8),
             ),
           ),
           Container(
-            decoration: _Theme.card,
+            decoration: _Theme.dCard,
             clipBehavior: Clip.antiAlias,
             child: filteredLogs.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(18),
+              ? Padding(
+                  padding: const EdgeInsets.all(18),
                   child: Center(
                     child: Text(
                       'No activities logged for this day.',
-                      style: TextStyle(color: _Theme.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: _Theme.dTextSecondary, fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                   ),
                 )
@@ -1916,7 +2110,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                       child: Row(children: [
-                        const Icon(Icons.check_circle_outline, color: _Theme.primary, size: 18),
+                        Icon(Icons.check_circle_outline, color: _Theme.primary, size: 18),
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
@@ -1927,17 +2121,17 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                                     : log.description.isNotEmpty
                                         ? '${log.action} — ${log.description}'
                                         : log.action, 
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Theme.textPrimary),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             log.timestamp.toLocal().toString().substring(11, 16),
-                            style: const TextStyle(fontSize: 11, color: _Theme.textSecondary),
+                            style: TextStyle(fontSize: 11, color: _Theme.dTextSecondary),
                           ),
                         ])),
                       ]),
                     ),
-                    if (!isLast) const Divider(height: 1, color: _Theme.border),
+                    if (!isLast) Divider(height: 1, color: _Theme.dBorder),
                   ]);
                 })),
           ),
@@ -1949,13 +2143,13 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   Widget _infoTile(String emoji, String value, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: _Theme.card,
+      decoration: _Theme.dCard,
       child: Column(children: [
         Text(emoji, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _Theme.dTextSecondary)),
       ]),
     );
   }
@@ -1966,21 +2160,21 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         child: Row(children: [
           Icon(icon, size: 18, color: iconColor),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Theme.textSecondary)),
+          SizedBox(width: 12),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _Theme.dTextSecondary)),
           const Spacer(),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _Theme.textPrimary)),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _Theme.dTextPrimary)),
         ]),
       ),
-      if (!isLast) const Divider(height: 1, color: _Theme.border),
+      if (!isLast) Divider(height: 1, color: _Theme.dBorder),
     ]);
   }
 
   Widget _fertRow(String label, String value) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.textPrimary)),
+      Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _Theme.dTextPrimary)),
       const SizedBox(width: 6),
-      Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _Theme.textSecondary))),
+      Expanded(child: Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _Theme.dTextSecondary))),
     ]);
   }
 }
