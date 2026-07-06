@@ -9,16 +9,16 @@ import '../services/storage_service.dart';
 
 // ─── Minimalist Green & White Design System ──────────────────────────────────
 class _Theme {
-  static const primary = Color(0xFF2C5530);      // Forest Green
-  static const primaryDark = Color(0xFF1D3920);  // Dark Forest Green
-  static const accent = Color(0xFF88A07A);       // Soft Sage
-  static const bg = Color(0xFFF9F8F4);           // Warm Cream
-  static const cardBg = Colors.white;            // White card background
-  static const border = Color(0xFFE5E9E4);       // Sage-tinted thin border
-  static const textPrimary = Color(0xFF1E2320);  // Slate Charcoal text
-  static const textSecondary = Color(0xFF55605A);// Muted soft charcoal
-  static const textTertiary = Color(0xFF8E9B94); // Light soft charcoal
-  static const highlight = Color(0xFFC27B5C);    // Earthy Terracotta
+  static const primary = Color(0xFF4CAF50);      // Leafy Green
+  static const primaryDark = Color(0xFF388E3C);  // Dark Leafy Green
+  static const accent = Color(0xFFFFC107);       // Sunny Yellow
+  static const bg = Color(0xFFF2FAF3);           // Subtle Mint
+  static const cardBg = Colors.white;            // Crisp White card background
+  static const border = Color(0xFFE2EDE4);       // Mint-tinted thin border
+  static const textPrimary = Color(0xFF0F1D15);  // Deep Navy/Green text
+  static const textSecondary = Color(0xFF3B4F44);// Muted Navy/Green
+  static const textTertiary = Color(0xFF7A8F83); // Light soft green-grey
+  static const highlight = Color(0xFF9C27B0);    // Floral Violet
 
   static const r12 = BorderRadius.all(Radius.circular(12));
   static const r16 = BorderRadius.all(Radius.circular(16));
